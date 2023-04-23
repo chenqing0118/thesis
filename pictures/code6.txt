@@ -1,0 +1,20 @@
+void CAEGenericSimulatorDeviceBase::MockFramePackets
+   (std::vector<cross::MacLogicFramePacket>& outPackets, cross::MockImageGeneratorTaskRunnable* mockRunnable)
+{
+        auto csvRowData = mockRunnable->NextCurrentFrameMockData();
+        auto messageNumber = mockRunnable->NextMessageNumber();
+        u_char* pkt_data;
+        ConvertCsv(pkt_data, csvRowData);
+}
+
+std::vector<double> MockImageGeneratorTaskRunnable::NextCurrentFrameMockData() const
+{
+       if (mDocument.GetRowCount() <= 1)
+            return std::vector<double>();
+        if (mCurrentCursor >= mDocument.GetRowCount())
+        {
+            auto rowData = mDocument.GetRow<double>(mCurrentCursor - 1);
+            return rowData;
+        }
+        return mDocument.GetRow<double>(mCurrentCursor++);
+}

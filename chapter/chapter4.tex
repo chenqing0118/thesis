@@ -1,0 +1,416 @@
+\chapter{数据交换子系统的详细设计与实现}
+\section{仿真机侧数据交换模块}
+\subsection{顺序图}
+图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了虚拟仿真机与仿真机沟通过程中各类的交互过程。
+首先交流环境类SimDeviceContext以mac地址作为参数尝试初始化即与仿真机建立连接，MacLink类中利用WinpPcap实现连接建立，并判断是否建立成功。
+成功建立连接后，便开始数据的收发。交流环境通过send方法最终交由代表CAE公司设备的类执行发送，CAEDevice则需要调用其专属转换类中的convert方法实现原始数据包与指令结构体之间的转换。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/sequence1.pdf}
+        \caption{仿真机侧数据交换顺序图}
+        \label{seq1}
+    \end{center}
+\end{figure}
+\subsection{仿真机建立连接}
+虚拟仿真机与仿真机间通过数据链路层数据帧直接交换信息，首先要建立连接。类SimulationDeviceContext表示在虚拟仿真机中与仿真机交流的环境，Initialize函数表示了该环境的初始化流程。
+代码中用到了条件编译，即根据编译时的参数来编译不同部分的代码。条件MOCKSIM表示是否使用模拟数据。如果编译时带有该参数，那么需要去读取配置文件中的模拟数据文件路径；
+否则进一步与真实仿真机建立真实链路层连接。两种方式都需要启动新的线程负责消息的收发工作。
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{6}]{pictures/code1.txt}
+    \caption{仿真机环境初始化代码}
+    \label{code1}
+\end{figure}
+
+\par
+真实链路层连接的建立则是使用到WinPcap。在Init方法中，首先通过pcap\_findalldevs方法获得该机器中所有网卡的信息，用户需要根据打印的信息选择需要使用的网卡。
+之后使用pcap\_open\_live获得该网卡数据包捕获描述字，成功后即表明完成初始化link layer句柄，虚拟仿真机与仿真机可以通过用户选择的网卡进行交流。
+最后通过pcap\_freealldevs释放网卡数据列表。
+\clearpage
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/code2.txt}
+    \caption{链路层连接建立代码}
+    \label{code2}
+\end{figure}
+
+\par
+WorkerThread是一个由线程定义与线程实例组成的结构体。上文中提到，根据条件编译结果，会得到与仿真机或模拟数据交流的两种线程定义，
+CreateRunnableThread负责根据编译情况创建工作线程，图\ref{code3}工作线程mMacLayerThread，作为与仿真机交流环境中的线程。
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/code3.txt}
+    \caption{创建工作线程代码}
+    \label{code3}
+\end{figure}
+
+\subsection{数据接收与反馈}
+如图\ref{code4}中第一段代码所示，原始数据包接收线程启动后，会在收到结束请求前循环执行ReceiveData方法收取数据。该方法中含有回调函数OnDataLinkReceived，用于进一步处理接收到的原始数据包，其实现如第二段代码所示。
+该回调函数中会将原始数据包中的多条指令拆开，并将每段指令依次存入集合framePackets中。最后调用QueuePacket函数将该集合加入仿真机消息接收队列中。
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/code4.txt}
+    \caption{原始数据包接收代码}
+    \label{code4}
+\end{figure}
+
+\par
+如图\ref{code5}所示。原始数据包的解析逻辑位于方法OnDataLinkLayerReceived中。由于原始数据包是数据链路层消息，其带有数据帧头、厂商自定义信息头等数据头部信息，拆分指令段前指针cursor需要先通过ParseMacLinkLayerHeader方法跳过该部分内容，进入正式数据部分。
+该部分中含有多条指令，每条指令头部有其长度信息，指针需要按照读取到的长度将数据部分进行拆分，并将指令内容复制到MacEncodingPacket对象中，加入上述仿真机消息接收队列中。虚拟仿真机从仿真机接收消息的过程就此结束。
+\par
+在真实的飞行训练中虚拟仿真机自然要与仿真机进行直接沟通，但在没有仿真机的开发环境中，虚拟仿真机也需要能够读取模拟数据来驱动视景系统运行。
+在编译项目时将条件设置为使用模拟数据，便可以开启该流程。
+\par
+图\ref{code6}是处理模拟数据的实现。设备指针mDevicePtr调用MockFramePacket方法读取csv文件，ConvertCsv函数将16进制字符两两一组转换为字节内容，最后将读取到的内容转换为MacEncodingPacket类型加入仿真机消息接收队列，此部分与连接仿真机时的过程相同。读取csv文件使用到了第三方库rapidcsv。
+NextCurrentFrameMockData方法中指针mCurrentCursor记录了当前读取到的csv文件行数，每次被调用都会从当前位置读取下一行数据内容。
+其中，mDocument表示csv文件对象，GetRow方法可以将csv中的一行内容读取到一个vector对象中。随后会根据读取到的指令代号调用相应的转换方法ConvertCsv，把vector对象转换为指令结构体。
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{6}]{pictures/code5.txt}
+    \caption{原始数据包解析代码}
+    \label{code5}
+\end{figure}
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{6}]{pictures/code6.txt}
+    \caption{模拟数据处理代码}
+    \label{code6}
+\end{figure}
+
+\par
+第三章需求部分提到，视景系统会给仿真机反馈信息，该消息同样需经过虚拟仿真机，将TCP消息最终转换为原始数据包进行发送。在仿真机交流环境中SendToSimulationDevice方法负责反馈信息，即将指令结构体转换为原始数据包后发送，其调用上文中的工作线程下的同名方法，由该线程负责执行工作。
+最终的实现方法则在具体的设备中，因为不同厂商的仿真机使用的数据组织结构大有不同，此处列出了为适配CAE公司仿真机而编写的方法。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/code8.pdf}
+        \caption{反馈消息逻辑}
+    \end{center}
+\end{figure}
+\par
+从视景系统中来的反馈信息类型为FfsLogicFramePacket，需要将其最终封装为数据帧发送。首先需要获取其中的指令代号，调用对应指令的转换方法，若暂时无法理解该指令便产生警告。
+其次需要为该数据帧添加仿真机规定的头部和尾部信息，最后通过MacLinkCommunication单例中的SendData完成数据链路层信息的发送。
+\par
+在使用模拟数据的情况下，如图\ref{feedbackmock}对于信息反馈只要解析其中的指令代号并打印日志即可。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/code9.pdf}
+        \caption{反馈消息实现代码}
+    \end{center}
+\end{figure}
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/code10.pdf}
+        \caption{模拟数据下反馈}
+        \label{feedbackmock}
+    \end{center}
+\end{figure}
+\subsection{多仿真机通用化}
+CAEGenericSimulatorDeviceBase中的构造函数里进行了注册convert
+不同厂商的仿真机厂商对于数据包中字段组成和属性编排有明显差异。如表\ref{simsattr}中对比了CAE公司和波音公司模拟机对于飞机移动这一指令数据包中的情况。
+通过对比可知，首先他们的头部信息存在差别；其次虽然这一数据包中都含有经纬度、海拔高度和欧拉角信息，但他们的排列顺序明显不同；最后，对于同一个属性如Altitude长度不同，存在精度上的差异。
+这些差异最终需要重新解释为统一格式以实现通用化。如图\ref{classtmp}中的代码所示，SD\_PACKET\_21H便是一个统一后用于表示飞机飞行数据的指令结构体。其中包含了基本的飞行用属性。适配新的仿真机只需要重新编写对数据包的解析函数。
+\begin{table}[htbp]
+    \begin{center}
+        \caption{不同仿真机字段比较}
+        \label{simsattr}
+        \renewcommand\arraystretch{1.2}
+        \begin{tabularx}{\textwidth}{ 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | }
+            \hline
+            \textbf{CAE字段} & \textbf{长度} & \textbf{Boeing字段} & \textbf{长度}\\
+            \hline
+            OpCode & 16bit & Packet ID & 16bit\\
+            \hline
+            CS number & 32bit & Entity ID & 16bit\\
+            \hline
+            Latitude MSW & 32bit & Roll & 32bit\\
+            \hline
+            Latitude LSW & 32bit & Pitch & 32bit\\
+            \hline
+            Longitude MSW & 32bit & Yaw & 32bit\\
+            \hline
+            Longitude LSW & 32bit & Latitude MSW & 32bit\\
+            \hline
+            Altitude& 32bit & Latitude LSW & 32bit\\
+            \hline
+            Roll & 32bit & Longitude MSW & 32bit\\
+            \hline
+            Pitch& 32bit & Longitude LSW & 32bit\\
+            \hline
+            Yaw & 32bit & Altitude & 64bit\\
+            \hline
+            etc. & & etc. & \\
+            \hline
+        \end{tabularx}
+    \end{center}
+\end{table}
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code12.pdf}
+        \caption{转换类模板代码}
+        \label{classtmp}
+    \end{center}
+\end{figure}
+
+\section{协议转换模块}
+\subsection{顺序图}
+图\ref{seq2}是协议转换模块的顺序图。描述了由指令结构体与ProtoBuffer协议结构间的转换中各类的交互过程。
+正向过程中，转换类调用指令结构类中的convert方法开启转换过程，过程中会将指令中对应的属性赋值给ProtoBuffer协议结构，当此结构完整后便可以加入发送给游戏引擎的队列中。
+逆过程中，则是调用ProtoBuffer协议结构中的convert方法，将属性组合成反馈指令结构体，加入给到仿真机的队列中。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/seq2.pdf}
+        \caption{协议转换顺序图}
+        \label{seq2}
+    \end{center}
+\end{figure}
+\subsection{ProtoBuf文件生成}
+使用ProtoBuffer首先需要编写一个proto文件定义程序中需要处理的结构化数据，在ProtoBuffer的术语中，结构化数据被称为Message。
+如图\ref{pb21}中的代码，定义了一个名为GeodeticCSUpdate的结构化数据，其中的成员为飞机飞行所需属性，且每一个成员均被赋予唯一的编号，在编码时使用该编号表示该成员。
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code15.pdf}
+        \caption{ProtoBuffer结构}
+        \label{pb21}
+    \end{center}
+\end{figure}
+\par
+写好proto文件之后就可以用ProtoBuffer编译器将该文件编译成目标语言。编译为C++后会得到.pb.h和.pb.cc文件，分别为该类的头文件和实现文件，
+提供了一系列的get/set函数用来修改和读取结构化数据中的数据成员。当需要将该结构化数据序列化时，类中已经提供相应的方法来把复杂的数据变成字节序列。
+对想要读取数据的程序来说，也只需要使用类中的相应反序列化方法来将这个字节序列重新转换为结构化数据。
+\subsection{协议转换算法}
+仿真机侧给到的属性并不是可以直接读取的浮点数，需要做出进一步的转换。欧拉角占32位，其数值单位为$360/2^{32}$，即一份是一个非常小的角度，可表示范围是-180°到179.999°。
+对于海拔这类高度长度而言，单位统一为0.5mm，即一份为半个毫米。对于此类转换只需要简单的乘法做单位转换。
+\par
+经纬度这种两字节属性的转换则稍微复杂。其中第一个字节为高位，且前24位表示符号，剩余8位表示高位数字，后一个字节为低位，即单位是$360/2^{40}$。
+且由于补码原因，需要对低位数字进行判断。低位数一定是一个正数，若为负数，则需要按照补码规则转换为正数再与高位相加。
+$$ffffff80 \qquad 00000000 \qquad represents \qquad -180.00degrees$$
+$$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code16.pdf}
+        \caption{数据转换算法}
+    \end{center}
+\end{figure}
+\subsection{转换方法注册}
+系统在需要转换的时候总要根据指令代号来确定对应的转换方法，便要求在系统运作前完成对于这些转换执行者的注册。
+如图\ref{convtmp}所示，类ProtoclConversion是转换执行者，这是一个模板类。T代表一个指令结构体，如上文中的SD\_PACKET\_21H；F代表一个ProtoBuffer结构如GeodeticCSUpdate。
+如果指令代号为21H，则使用对应的转换执行对象里的Convert方法即可实现转换。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/code13.pdf}
+        \caption{转换执行模板类}
+        \label{convtmp}
+    \end{center}
+\end{figure}
+\par
+对于一系列ProtoclConversion对象的注册代码如图\ref{regiconv}所示。转换执行者分为两组，一组为mSimConverter，根据仿真机侧的指令代号找到转换执行者；另一组为mFfsConverter，可以根据引擎侧的指令代号找到转换执行者。
+RegisterProtocolConversion函数负责将执行者加入两个map中，key为指令代号，value为转换执行者的指针。此函数会在整个环境的构造函数中被多次调用，完成所有注册。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{pictures/code14.pdf}
+        \caption{转换执行类注册代码}
+        \label{regiconv}
+    \end{center}
+\end{figure}
+\section{游戏引擎侧数据交换模块}
+\subsection{顺序图}
+图\ref{seq3}是游戏引擎侧数据交换模块的顺序图。描述了虚拟仿真机与游戏引擎间沟通时各类的交互过程。
+首先交流环境IGContext先通过Tbuspp的配置文件建立连接，Tbuspp插件类会判断连接是否成功。
+连接建立后，交流环境通过send方法通知FFSDevice已有数据准备好发送，此时FrameSync类会介入判断在规定发送频率下此时是否可以发送。
+到达发送时间后，会调用IGDevice中的send方法执行具体发送动作。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/sequence3.pdf}
+        \caption{游戏引擎侧数据交换顺序图}
+        \label{seq3}
+    \end{center}
+\end{figure}
+\subsection{Tbuspp连接建立}
+虚拟仿真机与游戏引擎之间通过Tbuspp插件进行信息交流，第一步是要先建立连接。类ImageGeneratorContext表示在虚拟仿真机中与游戏引擎交流的环境，Initialize函数表示了该环境的初始化流程。
+代码中同样用到了条件编译。条件MOCKIG表示不与游戏引擎建立真实连接，而是直接读取配置文件中的模拟数据文件路径，模仿视景系统给到的反馈，暂时该功能并未投入使用；
+否则进一步与游戏引擎建立连接。两种方式都需要启动新的线程负责消息的收发工作。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{pictures/code17.pdf}
+        \caption{引擎侧环境初始化代码}
+    \end{center}
+\end{figure}
+\par
+Tbuspp连接的建立首先需要编写一个简单的配置文件，其中需要给出每个节点的url和busid。如图\ref{tbusconfi}中所示，VSD节点表示虚拟仿真机，另外还包含有两个视景节点，ImageGeneratorGroup则代表所有的视景节点，
+当需要广播消息时可以给到该节点。此处的url均为本地地址，实际运行中，虚拟仿真机与视景系统运行在不同机器上，需根据实际情况进行配置。
+\par
+在Tbuspp初始化方法中，node参数表示已经过反序列化的配置文件内容，首先通过LoadDomainConfig读取所有的节点；其次通过SetLocalClient设置本地的服务节点，在虚拟仿真及侧该节点为VSD。之后使用tbuspp\_open方法开启连接，
+并检查连接状态是否正常。随后获取消息的接收和发送队列in\_queue和out\_queue并对他们进行一次清空操作，做好收发消息的准备。
+\clearpage
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.3\textwidth]{pictures/code18.pdf}
+        \caption{Tbuspp配置文件}
+        \label{tbusconfi}
+    \end{center}
+\end{figure}
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code19.pdf}
+        \caption{Tbuspp初始化代码}
+    \end{center}
+\end{figure}
+\subsection{Tbuspp数据发送}
+SendToImageGenerator方法负责发送信息至游戏引擎。其参数包括需要发送的数据和接收数据的视景系统节点名称。使用SerializeToArray方法对待发送数据进行序列化后，便交由TbusDomainContext单例处理发送操作。
+其中先根据节点名称确定发送的目标节点，之后通过tbuspp\_queue\_write方法将发送内容写入本地服务节点的发送队列out\_queue中，由Tbuspp完成发送。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{pictures/code20.pdf}
+        \caption{引擎侧发送信息代码}
+    \end{center}
+\end{figure}
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code21.pdf}
+        \caption{Tbuspp发送信息代码}
+    \end{center}
+\end{figure}
+\subsection{稳定发送频率}
+在游戏中逻辑线程负责数据的产生，渲染线程负责根据数据渲染画面，一般比逻辑线程慢许多。因为逻辑线程跑的太快基本没有意义，还会耗光内存。因为逻辑线程不断的产生数据传递给渲染线程，如果渲染线程消费数据远远慢于产生数据，就会有越来越多的数据存于内存中。
+因此需要对逻辑线程做出一定限制，不能让其一直保持工作状态。
+\par
+在本系统中对于仿真机数据的处理和传输可以认为是逻辑线程的工作，而游戏引擎部分基本为渲染线程的工作。图\ref{sync}是对于逻辑线程进行限制的核心方法Sync。
+high\_resolution\_clock是C++11中的新特性，提供的拥有最小计次周期的时钟。在本系统中以微妙作为基本周期，FrameDurationUs表示每次发送的间隔周期，如果要求为60Hz的发送频率则该值为$10^6/60$微秒。
+若距离上一次发送的时间仍小于间隔周期，则使用Sleep方法将线程挂起剩余的时间长度。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code22.pdf}
+        \caption{限制频率代码}
+        \label{sync}
+    \end{center}
+\end{figure}
+\par
+在第二章的介绍中提到Nagle算法可以减少TCP包的个数，更高效的利用网络带宽。但同时也会带来一些延时问题，在实时交互应用中尤其重要。
+对于部署虚拟仿真机和游戏引擎的Windows系统机器都需要在注册表中将TcpAckFrequency字段和TcpNoDelay字段值修改为1，以禁用Nagle算法。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/nagle.png}
+        \caption{Windows中禁用Nagle}
+    \end{center}
+\end{figure}
+\section{飞行控制模块}
+\subsection{顺序图}
+图\ref{seq4}是飞行控制模块的顺序图，描述了游戏引擎执行飞行逻辑时各类大致的交互过程。
+场景类World每帧调用tick函数执行该帧中的操作，逻辑脚本FlightScript调用引擎核心中负责变换和物理的System中的算法，完成飞机的移动旋转，以及对于下方地形的检测。
+Camera类也会被World每帧调用，执行不同视角逻辑下的移动旋转，变焦等动作。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=.8\textwidth]{pictures/sequence4.pdf}
+        \caption{飞行控制顺序图}
+        \label{seq4}
+    \end{center}
+\end{figure}
+\subsection{飞行位置与姿态计算}
+由经度longitude，纬度latitude和高度altitude组成的LLA坐标系，可以说是最为广泛应用的一个地球坐标系，它给出一点的大地纬度、大地经度和大地高程直观地告诉我们该点在地球中的位置，故又被称作经纬高坐标系。仿真机给出的飞机位置便是LLA坐标形式。
+地心地固坐标系ECEF是以地心为原点的笛卡尔坐标系，在游戏引擎中自然使用该坐标系更为便捷。在两种坐标系下地球都是默认为两级略扁的规则椭球形，赤道长半轴为6378137.0米，两极短半轴为6356752.314245米，扁率为1/298.257223563。
+B. R. Bowring在1985年便提出了两种坐标间的转换方法\cite{cha4}。如图\ref{lla2ecef}和图\ref{ecef2lla}所示。其中a为长半轴，b为短半轴，e为椭球的偏心率，N为椭球的曲率半径。
+$$e^2=\frac{a^2-b^2}{a^2}$$
+$$N=\frac{a}{\sqrt{1-e^2sin^2(lat)}}$$
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code23.pdf}
+        \caption{LLA转换为ECEF坐标代码}
+        \label{lla2ecef}
+    \end{center}
+\end{figure}
+\clearpage
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code28.pdf}
+        \caption{ECEF转换为LLA坐标代码}
+        \label{ecef2lla}
+    \end{center}
+\end{figure}
+\par 
+除了LLA与ECEF之间的转换，我们还需要建立一个东北天坐标系ENU，这是一个在物体所在位置建立的坐标系，三个轴分别指向东方，上方和北方。飞机的欧拉角便是以ENU坐标系为初始状态进行旋转。
+我们依旧可以仅从LLA坐标得到ENU坐标系。如图\ref{llanue}所示，我们可以根据经度和纬度做简单的三角函数运算得出该点法线向量normal，即ENU坐标系中的up方向。同时法线与y轴所构成的平面一定与东方向垂直。
+在三维向量下，两个不平行的向量进行叉乘可以得到垂直于该平面的一个向量。根据该几何意义，将normal与y轴单位向量(0,1,0)叉乘即可得到东方向。同理将东方向与normal叉乘，即可得到北方向，ENU坐标系就此构建完毕。
+飞机的姿态需要使用欧拉角与ENU坐标系形成的旋转矩阵相乘，才能正确得到游戏引擎世界坐标系ECEF下的姿态。
+$$normal.x=cos(lat) * sin(lon)$$
+$$normal.y = sin(lat)$$
+$$normal.z = -cos(lat) * cos(lon)$$
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/ecef.png}
+        \caption{LLA与ENU坐标系}
+        \label{llaneu}
+    \end{center}
+\end{figure}
+\subsection{可操控摄像机}
+游戏引擎渲染的画面是由摄像机决定的，要相对场景进行观察，摄像机是必不可少的。对于飞行训练来讲，一台在驾驶舱位置的第一视角摄像机即可满足训练要求。但是对于开发人员来讲，需要观察机身上如起落架、灯光等部件是否
+按照代码逻辑正常运作；同时也要观察机场中各要素是否正确渲染。除了第一视角的摄像机外还实现了可以环绕机身的摄像机以及可以脱离飞机自行移动的摄像机。
+如代码\ref{switchcamera}所示，摄像机的模式由枚举类型mode控制，开发人员可以通过按键X进行模式切换。第一视角下不接受任何输入；环绕模式下只接受鼠标输入，根据鼠标的移动进行环绕；自由模式下则另外接受键盘输入可以自由移动。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code27.pdf}
+        \caption{摄像机切换代码}
+        \label{switchcamera}
+    \end{center}
+\end{figure}
+\par 
+第一人称摄像机拥有最简单的逻辑，位置和旋转与飞机保持一致即可。为避免飞机的原点并不在模型驾驶舱位置的问题，添加了FocusonOffset变量，表示摄像机与模型原点的相对位置，当然这个向量也要旋转至世界坐标中再使用。
+系统中关于旋转的信息都是以TRSQuaternionAType类定义的四元数表示。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code24.pdf}
+        \caption{第一人称摄像机代码}
+    \end{center}
+\end{figure}
+\par
+环绕相机的操作效果是让相机在物体固定距离的球面上运动且始终看向对焦的物体。实际的实现思路则与之相反，可以让相机初始位于驾驶舱位置，通过鼠标移动确定观察角度后，再沿反方向后移固定距离，即可实现以飞机为焦点的环绕相机。
+在具体代码中，首先根据鼠标移动信息改变摄像机的俯仰和偏航角度，因为视野始终要与地平线平行，翻滚角不能去改变。新的欧拉角也是定义在当前位置的东北天坐标系下，需要与该坐标系对应的旋转再次相乘才能获得世界坐标系下的摄像机真实旋转姿态。
+确定好了旋转姿态后，向摄像机朝向的反方向移动固定距离即可。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code25.pdf}
+        \caption{第三人称环绕摄像机代码}
+    \end{center}
+\end{figure}
+\par
+自由摄像机相比环绕摄像机中旋转的逻辑是相同的，唯一的区别是相机不再会跟随某一物体移动。在具体代码中引入translationDelta参数表示这一帧下的移动距离，最终的摄像机位置为初始位置进行旋转后，在其朝向加上移动距离。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/code26.pdf}
+        \caption{自由摄像机代码}
+    \end{center}
+\end{figure}
+\subsection{检测地形信息}
+游戏引擎在飞机飞行的过程中需要对沿法线下方的地形信息做检测，检测内容包括地形高度、离地距离等等。目的是将这些信息给反馈给仿真机做进一步的判断。
+离地距离较大时，飞机只需作为一个整体进行检测。当离地距离较小时即飞机起飞或降落的过程中，需要检测每一个起落架下方的地形信息。
+如图\ref{detterrain}代码所示，检测地形信息需要通过发射射线与地形进行碰撞，射线包含起点与方向两个基本属性。射线的方向为当前飞机所在经纬度，地球表面法线方向，使用上一节中提到的函数，
+便可通过经纬度得到法线方向。起落架的位置则是通过相对飞机原点位置给出，需要先将偏移量转换到世界坐标中。得到起点与方向，便可以完成射线发射，如果射线碰撞到地形，则将信息反馈。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{pictures/code30.pdf}
+        \caption{地形检测逻辑代码}
+        \label{detterrain}
+    \end{center}
+\end{figure}
+\par 
+方法RayCast负责射线的发射，其参数包括射线的起点，方向，最大距离，与场景中的哪些物体进行碰撞，最大碰撞次数，以及碰撞后的最终返回结果。
+在一个场景中可能存在数以百计的物体，如果遍历物体是非常耗时的工作。碰撞检测除了使用八叉树等技术对空间进行划分外，另一重要方法是对场景中的物体进行分类。
+本系统中的射线检测目标仅限地形，filterData便是对于碰撞物体的限制。碰撞检测则是使用到了Physx物理引擎，这是一套由AGEIA设计的负责物理运算部分的处理器，类似专门负责处理图形的GPU。NVIDIA将其收购后，利用CUDA技术可使用GPU加速物理运算。
+该物理引擎最终的碰撞结果中会将如碰撞位置，距离，地形法线甚至纹理坐标等信息反馈。
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{pictures/code29.pdf}
+        \caption{射线发射代码}
+    \end{center}
+\end{figure}
+\section{本章小结}
+本章在需求分析及总体设计的基础上，对系统包含的四个模块核心功能的实现做了具体阐述。对于虚拟仿真机与仿真机和游戏引擎的数据交换模块，都介绍了建立连接的过程和收发信息的过程。仿真机侧额外介绍了为应对不同厂商模拟机而做的设计，
+游戏引擎侧则额外介绍了稳定信息收发帧率的实现方法。在协议转换模块中介绍了使用ProtoBuffer协议的流程方法，对较为特殊的字段转换算法做了详细说明。在最后的飞行控制模块中，介绍了让飞机飞行的实现，三种观察方式摄像机的实现，以及飞行中对于地形信息检测的实现。

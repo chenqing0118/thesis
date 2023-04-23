@@ -1,0 +1,32 @@
+\begin{abstract}
+    {飞行模拟不只是普罗大众概念里一类体验飞行环游的游戏，
+    其同时肩负着飞行训练这一更严肃使命。依托全动飞行模拟机进行日常训练是每一位飞行员的重要科目。
+    达到飞行训练要求的模拟机称为全动飞行模拟机。
+    目前我国的相关设备基本依赖进口，近年来国际局势剧烈变动，加之中国商飞C919客机取得中国民航局颁发的合格证，相应全动飞行模拟机的自主研发必须快马加鞭。
+    \par
+    本项目立足于全动飞行模拟机中承担视觉效果的视景系统。
+    仿真机是一台模拟机的核心，视景系统的运作需要仿真机的指令驱动。然而结合文档和网络抓包发现仿真机是一个相当底层的设备，其数据只经过以太网协议封装。这与基于游戏引擎开发的视景系统全然不处于同一层级，它们无法直接交流。
+    为此本文设计并实现了视景系统中的数据交换子系统，其主要充当网络协议栈和翻译的角色。一方面它绕过操作系统的网络协议栈直接对仿真机侧的数据进行解封和封装，另一方面它负责仿真机自拟的数字表示形式与常规认知的数字间的转换。
+    通过以上两点搭建仿真机与视景系统沟通的桥梁。
+    \par
+    
+    此过程中使用到ProtoBuffer数据交换协议来提升序列化的效率；引入了仿真机指令与自定义指令的映射机制屏蔽仿真机间的差别。
+    此外实现了视景系统中基本的飞机飞行与计算反馈信息的逻辑，构成了完成数据流动的闭环，对数据交换结果也有了形象的观察。
+    目前该视景系统可以在CAE仿真机操控下，以至少60帧率实现地景数据库中各机场附近环绕飞行，标志着迈出了动起来的坚实第一步。以此为根基，后续对天气、灯光、植被等多种系统进行研究与引入，尽早达成训练用模拟机的验收标准。
+    }                  
+\end{abstract}
+\begin{abstract*}
+    {Flight simulation in most people's concept may be a kind of game to experience flight. 
+    However, it's a more significant function for flight simulation to assist flight training. Daily training by professional simulator is an important subject for every pilot.
+    Simulators for training have strict requirements such as identical cockpit, six-degree freedom acceleration device, and similar landform of worldwide airports, which is totally different from games. These simulators are named full flight simulator.}
+    \par
+    This project is based on the visual system who undertakes visual effects of full flight simulator. Visual system exchanges data with simulator when running. It receives data from simulator to render surroundings, and feedback flight infomation on real time.
+    This paper focuses on data exchange in visual system and application of basic flight data. First of all, in order to achieve real-time rendering with stable frame rate, efficient and controllable data exchange is needed. This system uses Protocol Buffers to improve data exchange efficiency.
+    It, meanwhile, is able to send data packets at a fixed rate to ensure smooth visual effects.
+    Then domestic existing visual systems will not compatible with other companies' equipment voluntarily, because all of them are binded with imported simulator.
+    As a new product, this visual system not only serves the coming domestic simulator, but also adapts data exchange protocols of exsiting introduced devices to expand market influence. 
+    Last but not least, on the basis of completing data exchange，the system achieves flight in Earth-Centered Earth-Fixed coordinate system with essential flight data. It can also interact with the terrain system to provide feedback for the simulator.
+    \par
+    At present, under the control of CAE simulator, the system realizes the circling flight around airports in the landscape database at least 60 frame rate. The flying plane in the visual system marks a crucial first step.
+    The next step is to study and introduce weather, lighting, vegetation and other systems, so as to up to standard of D-Level simulator as soon as possible.
+\end{abstract*}
