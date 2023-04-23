@@ -1,5 +1,5 @@
 \chapter{相关技术概述}
-
+\section{WireShark网络分析工具}
 \section{WinPcap架构}
 WinPcap（windows packet capture）是由意大利人Loris Degioanni在2000年提出并实现的一个架构，目的在于为Windows平台应用程序提供访问网络底层的能力\cite{winpcap1}。
 传统socket通信中，两台主机之间通信，socket接收到的内容都是已经过网络协议栈处理的通信内容，并不会含有如数据帧头，IP头，TCP/UDP等内容。WinPcap功能在于独立于操作系统的网络协议栈而发送和接收数据帧，非常适合做网络协议分析、网络监控等工作\cite{winpcap2}。
@@ -117,8 +117,7 @@ CrossEngine从最初的架构设计到三方基础库的选型都为Runtime尺�
 
 % \par
 % Lua作为解释性语言不需要编译过程，有更强的跨平台能力，且节省了开发过程中对于逻辑代码反复修改的编译时间，总之可以更灵活地应对各方面变动。本系统中用于观察系统效果和生成反馈信息的飞机飞行逻辑便是通过Lua脚本实现，其中调用如物体旋转、射线发射等游戏引擎中C++编写的方法，尽可能避免引擎核心的改动。
-\section{WireShark抓包工具}
-\section{帧缓冲机制}
+
 \section{插值算法}
 \section{航空坐标系及坐标系转换}
 在模拟飞行中，涉及到位置和旋转的数据都是以某个坐标系为基础，常用坐标系有飞机自身坐标系、经纬高LLA坐标系、地心地固ECEF坐标系和北东天ENU坐标系。

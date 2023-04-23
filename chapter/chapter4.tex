@@ -1,10 +1,11 @@
-\chapter{数据交换子系统的详细设计与实现}
+\chapter{数据同步与平滑机制的设计与实现}
 \section{仿真机侧数据交换模块}
-\subsection{顺序图}
+\subsection{顺序图1}
 图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了虚拟仿真机与仿真机沟通过程中各类的交互过程。
 首先交流环境类SimDeviceContext以mac地址作为参数尝试初始化即与仿真机建立连接，MacLink类中利用WinpPcap实现连接建立，并判断是否建立成功。
 成功建立连接后，便开始数据的收发。交流环境通过send方法最终交由代表CAE公司设备的类执行发送，CAEDevice则需要调用其专属转换类中的convert方法实现原始数据包与指令结构体之间的转换。
 \begin{figure}[h!]
+
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence1.pdf}
         \caption{仿真机侧数据交换顺序图}

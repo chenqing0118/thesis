@@ -1,4 +1,13 @@
-\chapter{数据交换子系统的需求分析与概要设计}
+\chapter{基础数据交换的分析设计与实现}
+\section{全动飞行模拟机整体概述}
+
+\begin{figure}[h]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/simstruct.pdf}
+        \caption{模拟机运转方式}
+        \label{framework}
+    \end{center}
+\end{figure}
 \section{视景系统整体概述}
 视景系统是FFS中负责连续生成模拟座舱前方飞行画面的系统。飞行员在模拟座舱中的操作将作为仿真机的输入，经过模拟计算后输出如位置、姿态、灯光等一系列指令，图像生成器根据指令要求执行逻辑后便可渲染连贯的飞行画面，提供模拟飞行的视觉效果。
 同时图像生成器也要以指令的形式反馈给仿真机如碰撞等信息。仿真机可以据此通知如声音、运动系统做出相应反馈。
@@ -18,6 +27,7 @@
         \label{framework}
     \end{center}
 \end{figure}
+\section{仿真机数据帧分析}
 
 \section{数据交换子系统需求分析}
 系统设计的第步是需求分析，其主要目的是明晰用户非形式化
