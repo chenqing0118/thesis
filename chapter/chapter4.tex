@@ -185,20 +185,7 @@ CAEGenericSimulatorDeviceBase中的构造函数里进行了注册convert
 写好proto文件之后就可以用ProtoBuffer编译器将该文件编译成目标语言。编译为C++后会得到.pb.h和.pb.cc文件，分别为该类的头文件和实现文件，
 提供了一系列的get/set函数用来修改和读取结构化数据中的数据成员。当需要将该结构化数据序列化时，类中已经提供相应的方法来把复杂的数据变成字节序列。
 对想要读取数据的程序来说，也只需要使用类中的相应反序列化方法来将这个字节序列重新转换为结构化数据。
-\subsection{协议转换算法}
-仿真机侧给到的属性并不是可以直接读取的浮点数，需要做出进一步的转换。欧拉角占32位，其数值单位为$360/2^{32}$，即一份是一个非常小的角度，可表示范围是-180°到179.999°。
-对于海拔这类高度长度而言，单位统一为0.5mm，即一份为半个毫米。对于此类转换只需要简单的乘法做单位转换。
-\par
-经纬度这种两字节属性的转换则稍微复杂。其中第一个字节为高位，且前24位表示符号，剩余8位表示高位数字，后一个字节为低位，即单位是$360/2^{40}$。
-且由于补码原因，需要对低位数字进行判断。低位数一定是一个正数，若为负数，则需要按照补码规则转换为正数再与高位相加。
-$$ffffff80 \qquad 00000000 \qquad represents \qquad -180.00degrees$$
-$$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=0.8\textwidth]{pictures/code16.pdf}
-        \caption{数据转换算法}
-    \end{center}
-\end{figure}
+
 \subsection{转换方法注册}
 系统在需要转换的时候总要根据指令代号来确定对应的转换方法，便要求在系统运作前完成对于这些转换执行者的注册。
 如图\ref{convtmp}所示，类ProtoclConversion是转换执行者，这是一个模板类。T代表一个指令结构体，如上文中的SD\_PACKET\_21H；F代表一个ProtoBuffer结构如GeodeticCSUpdate。

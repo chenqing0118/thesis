@@ -1,0 +1,12 @@
+#define  REV2_DEG          3.27418092638254e-10
+void DecodeUIntToDouble(double& outV, UInt32 msw, UInt32 lsw)
+    {
+        SInt32 s_msw = static_cast<SInt32>(msw);
+        SInt32 s_lsw = static_cast<SInt32>(lsw);
+
+        double v1 = (double)s_msw * POW2_32;
+        double v2 = (double)s_lsw;
+        if (v2 < 0) v2 += POW2_32;
+        double v3 = v1 + v2;
+        outV = v3 * REV2_DEG;
+    }

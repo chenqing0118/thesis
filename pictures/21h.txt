@@ -1,0 +1,12 @@
+typedef struct PACKET_21H
+{
+        Header_Common       header;
+        UInt32              latitude_msw;
+        UInt32              latitude_lsw;
+        UInt32              longitude_msw;
+        UInt32              longitude_lsw;
+        SInt32              altitude;
+        SInt32              roll;
+        SInt32              pitch;
+        SInt32              yaw;
+}
