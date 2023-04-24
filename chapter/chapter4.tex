@@ -1,5 +1,31 @@
-\chapter{数据同步与平滑机制的设计与实现}
+\chapter{基础数据交换的详细设计与实现}
 \section{仿真机侧数据交换模块}
+仿真机侧数据交换模块负责虚拟仿真机与仿真机之间的交流。他们之间通过数据链路层的原始数据包进行沟通，即除去真实数据外，仅含有Mac地址等信息。因此不能依靠TCP/IP协议收发而是直接访问底层网络。
+该模块会将到来的数据帧拆为指令结构体供后续使用，或者将指令结构体包装为数据帧发送给仿真机。
+\par
+本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。在接收到消息后，需要先读取数据帧中的指令代号信息，如果代号已知，则调取对应的转换对象，将其中信息重新解释为对应的指令结构体。
+由于指令代号有接近百种，项目初期只用到部分指令，对于未知的指令进行抛弃。发送反馈消息过程中，则需要对指令结构体添加数据帧头部信息，并通过底层网络直接发送。
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/flowchart1.pdf}
+        \caption{仿真机侧数据交互流程图}
+        \label{module11}
+    \end{center}
+\end{figure}
+\par
+本模块的核心类图如图\ref{module12}所示。其中的核心是类SimulationDeviceContext，它表示在虚拟仿真机中与仿真机交流的环境，其中包含控制信息收发的线程和待发送信息队列。
+ISimulatorDeviceInterface则是与仿真机交流的接口，其中包含了对于数据帧中指令代号的读取方法GetSimOperateCode，以及发送消息给仿真机SendToSimulationDevice方法。
+FullFightSimulatorDeviceBase中包含对该接口的实现。CAEGenericSimulatorDeviceBase代表CAE公司FFS设备，其中含有解读并转换该设备原始数据包的具体算法。当需要接入其他公司设备时，
+只需要重新设计对应方法即可。
+MacLinkCommunication类负责建立数据链路层连接并与真实仿真机进行原始数据包的交流。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/classdiagram1.pdf}
+        \caption{仿真机侧数据交互核心类图}
+        \label{module12}
+    \end{center}
+\end{figure}
 \subsection{顺序图1}
 图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了虚拟仿真机与仿真机沟通过程中各类的交互过程。
 首先交流环境类SimDeviceContext以mac地址作为参数尝试初始化即与仿真机建立连接，MacLink类中利用WinpPcap实现连接建立，并判断是否建立成功。
@@ -158,7 +184,33 @@ CAEGenericSimulatorDeviceBase中的构造函数里进行了注册convert
     \end{center}
 \end{figure}
 
-\section{协议转换模块}
+\section{指令转换模块}
+指令转换模块负责指令结构体与ProtoBuffer协议结构间的封装与解封。从仿真机收到的消息中对于浮点数的表达方式是由该厂商自行设计的，对于不同精度要求的数据表示方式也存在差异。
+因此这两种结构之间的转换需要严格依照设计文档中的说明设计转换算法，而不是简单的赋值。ProtoBuffer协议结构为给到游戏引擎的数据结构，指令结构体则是准备反馈给仿真机的结构。
+\par
+本模块的主要执行流程如图\ref{module21}所示。在封装的过程中，需要先确定该指令对应的ProtoBuffer结构，经过数据转换算法后得到该结构，之后添加部分头部信息便可将其加入发送队列。
+解封时现根据头部信息确定指令类型，再使用逆向的数据转换算法生成指令结构体即可准备发送给仿真机。
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/flowchart2.pdf}
+        \caption{数据转换流程图}
+        \label{module21}
+    \end{center}
+\end{figure}
+\par
+本模块的核心类图如图\ref{module22}所示。其中核心为IProtoclConversion接口，其中声明了指令结构体与ProtoBuffer协议结构体互相转换的两种方法Convert。
+ProtoclConversion是一个模板类，成员属性T表示一个指令结构体，成员属性F表示一个ProtoBuffer协议结构体，T和F组成互相转换的一对。该模板实例化的对象调用Convert方法便可以调用到对应结构体的转换方法。
+SD\_PACKET\_21H是一个指令结构体的实例类型，包含了经纬度欧拉角等飞机飞行信息，其中也含有该指令类型转换的具体方法，发送给仿真机的队列MacLogicFramePacket由添加了数据帧头的指令结构体构成。
+GeodeticCSUpdateStruct为SD\_PACKET\_21H指令结构体对应的ProtoBuffer协议结构体，发送给游戏引擎的消息队列FfsLogicFramePacket由各种ProtoBuffer协议结构体组成。
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/classdiagram2.pdf}
+        \caption{数据转换核心类图}
+        \label{module22}
+    \end{center}
+\end{figure}
 \subsection{顺序图}
 图\ref{seq2}是协议转换模块的顺序图。描述了由指令结构体与ProtoBuffer协议结构间的转换中各类的交互过程。
 正向过程中，转换类调用指令结构类中的convert方法开启转换过程，过程中会将指令中对应的属性赋值给ProtoBuffer协议结构，当此结构完整后便可以加入发送给游戏引擎的队列中。
@@ -208,6 +260,27 @@ RegisterProtocolConversion函数负责将执行者加入两个map中，key为指
     \end{center}
 \end{figure}
 \section{游戏引擎侧数据交换模块}
+游戏引擎侧数据交换模块负责虚拟仿真机与游戏引擎之间的交流。其利用Tbuspp插件使用TCP消息沟通，数据交换协议则是ProtoBuffer。再发送给游戏引擎的过程中，需要将发送频率的固定，因此该线程会以固定的频率被唤醒。
+\par
+本模块的主要执行流程如图\ref{module31}所示。当发送队列中有消息时，若可以进行发送则直接发送，否则要等待新的发送时机。反馈消息接收时则不需考虑频率，直接接收消息并给到协议转换模块。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/flowchart3.pdf}
+        \caption{视景系统侧数据交互流程图}
+        \label{module31}
+    \end{center}
+\end{figure}
+\par
+本模块的核心类图如图\ref{module32}所示。其中的核心是类ImageGeneratorContext，它表示在虚拟仿真机中与游戏引擎交流的环境，其中包含控制信息收发的线程和信息队列。
+IImageGeneratorDeviceInterface则是与游戏引擎交流的接口，其中包含了对于ProtoBuffer结构中指令代号的读取方法GetOperateCode，以及发送消息给游戏引擎SendToImageGenerator方法。
+FullFightSimulatorDeviceBase是对该接口的实现，其依赖控制发送频率的类FrameSynchronization。CAEGenericSimulatorDeviceBase代表CAE公司FFS设备，其中含有与该公司设备进行沟通的具体方法。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/classdiagram3.pdf}
+        \caption{视景系统侧数据交互核心类图}
+        \label{module32}
+    \end{center}
+\end{figure}
 \subsection{顺序图}
 图\ref{seq3}是游戏引擎侧数据交换模块的顺序图。描述了虚拟仿真机与游戏引擎间沟通时各类的交互过程。
 首先交流环境IGContext先通过Tbuspp的配置文件建立连接，Tbuspp插件类会判断连接是否成功。
