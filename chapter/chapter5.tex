@@ -78,7 +78,7 @@
 \par 
 图\ref{synctest}是对频率限制工具FrameFrequencyRestriction测试的效果，测试过程中将其频率设置为30Hz，运行csv文件读取部分程序，
 可以看到从读取第18行数据到读取第48行数据中正好间隔1秒钟。多种频率均能通过测试。
-\clearpage
+
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.4\textwidth]{pictures/frame.png}
@@ -96,7 +96,7 @@
 \par
 在确认虚拟仿真机输出无误后，便可使用此数据进一步测试游戏引擎中飞行控制逻辑。图\ref{firsttest}是飞机第一视角下的飞行画面，可以看到根据模拟数据，飞机准确出现在宝安机场跑道上，
 且后续飞行中的爬升转向时的视角偏转完全符合实际情况，最终飞机按照轨迹终止于场景中的森林公园上空。此测试过程同样表明第一视角摄像机可以正确跟随飞机位置并做出相同的姿态。
-\clearpage
+
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=.9\textwidth]{pictures/trace.png}
@@ -114,7 +114,7 @@
 \par
 当摄像机位于第一视角下，按下X键即可切换为环绕视角。如图\ref{orbittest}所示，此时摄像机不在位于驾驶舱位置，而是在一定距离外始终看向驾驶舱。
 鼠标左右方向的滑动可以改变Yaw角使摄像机水平方向的环绕，上下的滑动则改变Pitch角是竖直方向的环绕。经测试操作感受与主流游戏基本一致。
-\clearpage
+
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.9\textwidth]{pictures/orbitcamera.png}
@@ -174,7 +174,7 @@
 \subsection{测试环境}
 在真实FFS环境下虚拟仿真机与视景运行机同样位于两台电脑上，此时虚拟仿真机不再读取模拟数据，而是与仿真机进行交流，即可以接受飞行员的操作。
 在硬件配置方面，基本为最新且性能最强的配件，保障视景流畅运行。在测试环境的具体物理配置信息如表\ref{ffshard}所示。
-\clearpage
+
 \begin{table}[h!]
     \begin{center}
         \caption{FFS环境物理配置}
@@ -275,6 +275,7 @@
             \end{tabularx}
     \end{center}
 \end{table}
+\section{系统测试}
 \section{本章小结}
 本章首先介绍了系统测试，通过系统测试可以有效保证系统的质量，同时可以验证系统的可用性。
 随后将测试分为了开发环境和真实FFS环境，分别作了部分功能测试，并由于硬件性能原因只在FFS环境中做了性能测试。
