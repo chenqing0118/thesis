@@ -1,0 +1,22 @@
+Double3 WGS84LLA_To_ECEF(double longitude, double latitude, double altitude)
+    {
+        longitude = MathUtils::Clamp(longitude, -180.0, 180.0);
+        latitude = MathUtils::Clamp(latitude, -90.0, 90.0);
+
+        double lon = MathUtils::ConvertToRadians(longitude);
+        double lat = MathUtils::ConvertToRadians(latitude);
+
+        constexpr double a = 6378137.0; // unit meter
+        constexpr double b = 6356752.314245; // unit meter
+        constexpr double a2 = a * a;
+        constexpr double b2 = b * b;
+        constexpr double e2 = (a2 - b2) / a2;
+        double v = a / sqrt(1 - e2 * sin(lat) * sin(lat));
+
+        double x = (v + altitude) * cos(lat) * sin(lon);
+        double y = ((1 - e2) * v + altitude) * sin(lat);
+        // reverse the z component to translate from right-handed to left-handed
+        double z = -(v + altitude) * cos(lat) * cos(lon);
+
+        return Double3(x, y, z);
+    }

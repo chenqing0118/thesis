@@ -3,6 +3,14 @@
 和不合理之处，确保最后将高质量的软件交付给用户。为了验证系统的功能和
 性能是否与需求分析时的规格说明一致，本章节在开发环境和真实FFS环境中分别做综合性的功能测试和性能测试。
 
+在第二章的介绍中提到Nagle算法可以减少TCP包的个数，更高效的利用网络带宽。但同时也会带来一些延时问题，在实时交互应用中尤其重要。
+对于部署虚拟仿真机和游戏引擎的Windows系统机器都需要在注册表中将TcpAckFrequency字段和TcpNoDelay字段值修改为1，以禁用Nagle算法。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.8\textwidth]{pictures/nagle.png}
+        \caption{Windows中禁用Nagle}
+    \end{center}
+\end{figure}
 \section{开发PC环境测试}
 由于国内的FFS全部位于航空公司的训练基地内，不具备移动的可能性，平日开发过程中的测试均使用虚拟仿真机读取模拟数据，并在开发PC上完成视景渲染。
 受限于硬件性能，在开发环境下的测试以功能测试为主，确保功能正常运作即可，对于画面帧率和分辨率之类不做严格要求。

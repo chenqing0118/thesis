@@ -237,7 +237,46 @@ $$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
 
 \subsection{非功能性需求}
 帧率是动态画面视觉体验的重要因素，对于电视与电影这类视频行业来讲24Hz以上的帧率便能达到良好的观看体验\cite{frame}。但对于需要飞行员实施操控的飞行模拟而言，60Hz以上的帧率才不会让飞行员产生操作延迟的感觉，因此本视景系统初期要求在训练基地的FFS设备上能达到60Hz的帧率，且运行时不出现可观察到的抖动现象。
-目前国内的进口模拟机来自CAE等外国公司，虽然各厂商的仿真机都是数据链路层设备，但他们的指令有不同的数据组织结构和数字表示方法，数据交换子系统需要屏蔽这些差异，方便日后的二次开发以适配不同仿真机。系统的非功能性需求列表如表\ref{unfuncreq}所示。
+目前国内的进口模拟机来自CAE等外国公司，虽然各厂商的仿真机都是数据链路层设备，但他们的指令有不同的数据组织结构和数字表示方法。表\ref{simsattr}展示了CAE公司与Flight Safety公司仿真机关于飞机地理位置指令结构的对比，在组织结构上存在明显差异，且其中的数字解释方法不尽相同。数据交换子系统需要屏蔽这些差异，方便日后的二次开发以适配不同仿真机。系统的非功能性需求列表如表\ref{unfuncreq}所示。
+\begin{table}[htbp]
+    \begin{center}
+        \caption{不同仿真机字段比较}
+        \label{simsattr}
+        \renewcommand\arraystretch{1.2}
+        \begin{tabularx}{\textwidth}{ 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | }
+            \hline
+            \textbf{CAE字段} & \textbf{长度} & \textbf{FS字段} & \textbf{长度}\\
+            \hline
+            OpCode & 16bit & Packet ID & 16bit\\
+            \hline
+            CS number & 32bit & Entity ID & 16bit\\
+            \hline
+            Latitude MSW & 32bit & Roll & 32bit\\
+            \hline
+            Latitude LSW & 32bit & Pitch & 32bit\\
+            \hline
+            Longitude MSW & 32bit & Yaw & 32bit\\
+            \hline
+            Longitude LSW & 32bit & Latitude & 64bit\\
+            \hline
+            Altitude& 32bit & Longitude & 64bit\\
+            \hline
+            Roll & 32bit & Altitude & 32bit\\
+            \hline
+            Pitch& 32bit &  etc. & \\
+            \hline
+            Yaw & 32bit &  & \\
+            \hline
+            etc. & &  & \\
+            \hline
+        \end{tabularx}
+    \end{center}
+\end{table}
 \begin{table}[h!]
     \begin{center}
         \caption{系统非功能性需求列表}

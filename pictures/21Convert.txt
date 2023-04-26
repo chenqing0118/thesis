@@ -1,0 +1,19 @@
+bool SD_PACKET_21H::Convert(SD_PACKET_21H const* inSimPtr, ce::net::AircraftGcsStatus & outFfs)
+    {
+        double latitude = 0.;
+        cross::DecodeUIntToDouble(latitude, inSimPtr->latitude_msw, inSimPtr->latitude_lsw);      
+        double longitude = 0.;
+        cross::DecodeUIntToDouble(longitude, inSimPtr->longitude_msw, inSimPtr->longitude_lsw);
+        double altitude = 0.;
+        altitude = DecodeSIntToDouble(inSimPtr->altitude, HMM_M)
+        Double3 ecef_pos = WGS84LLA_To_ECEF(longitude, latitude,  altitude);
+
+        outFfs.set_x(ecef_pos.x);
+        outFfs.set_y(ecef_pos.y);
+        outFfs.set_z(ecef_pos.z);
+        outFfs.set_yaw(DecodeSIntToDouble(inSimPtr->yaw, REV1_DEG));
+        outFfs.set_pitch(DecodeSIntToDouble(inSimPtr->pitch, REV1_DEG));
+        outFfs.set_roll(DecodeSIntToDouble(inSimPtr->roll, REV1_DEG) * -1.0);
+
+        return true;
+    }

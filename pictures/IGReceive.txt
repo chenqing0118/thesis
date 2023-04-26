@@ -1,0 +1,38 @@
+int IGClient::Read()
+{
+    const char* msg;
+    uint32_t size;
+    tbuspp_msg_desc_t desc;
+    msg = tbuspp_queue_peek(in_queue_, &size, &desc);
+
+    FFSFrame packets;
+    packets.ParseFromArray(msg, size);
+    for(packet in packets){
+         circular_queue_.push(packet);
+    }
+    
+    tbuspp_queue_pop(in_queue_);
+    return 0;
+}
+
+void OnHandleTbusppPacket(const TbusHandler& handler)
+{
+       FFSPacket packet;
+       while (circular_queue_.try_pop(packet))
+       {
+            auto opCode = packet.get_opCode();
+            if (opCode == FFS_MSG::FullFlightSimulatorPacket_EnumFFSCommand_UnknownCommand)
+            {
+                return;
+            }
+            if (mFfsPacketHandlerMap.find(opCode) == mFfsPacketHandlerMap.end())
+            {
+                auto sourceStr = targetDescriptor->FindValueByNumber(source)->name();
+                LOG_ERROR("No handler found with opcode {} from {}!", opCode，sourceStr);
+                return;
+            }
+            auto& handler = mFfsPacketHandlerMap[opCode];
+            handler->OnExecuted(data, size, source, destination, mGameWorld, engineFrameCount);
+       }
+       return 0;
+ }

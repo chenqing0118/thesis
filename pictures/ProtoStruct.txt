@@ -1,0 +1,27 @@
+message FFSFrame {
+    required Version                   version      = 1;
+    required EnumFFSTarget             source       = 2;
+    required EnumFFSTarget             destination  = 3;
+    required uint32                    msg_number   = 4;
+    required uint64                    send_time_us = 5;
+    repeated FullFlightSimulatorPacket packets      = 6;
+}
+
+message FullFlightSimulatorPacket {
+    enum EnumFFSCommand {
+        UnknownCommand                   = 0;
+        AircraftGcsStatus                 = 1;
+        ......
+    }
+    required EnumFFSCommand opcode = 1 [ default = UnknownCommand ];
+    optional bytes          content = 2;
+}
+
+message AircraftGcsStatus {
+    required double x     = 1;
+    required double y     = 2;
+    required double z     = 3;
+    required double roll         = 4;
+    required double pitch        = 5;
+    required double yaw          = 6;
+}

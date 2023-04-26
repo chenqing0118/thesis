@@ -1,0 +1,39 @@
+bool CAEGenericSimulatorDeviceBase::SendToSimulationDevice
+        (vector<cross::MacEncodingPacket> const& inPackets)
+    {
+        static thread_local SInt8 generator_body[1024];
+        static thread_local SInt8 generator_pack[1514];
+        static thread_local IGToSimLinkLayerHeader mac_header;
+
+        SInt32 totalPacketLength = 0;
+        for (int index = 0; index < inPackets.size(); ++index)
+        {
+            MacEncodingPacket macProtocol = inPackets.at(index);
+            // checkOpcode
+            auto OpCode = macProtocol.opcode();
+            if (!IsValidateProtocol(OpCode))
+            {
+                LOG_WARN("invalidate protocol {}H found , ignore it", OpCode);
+                return false;
+            }
+            // Make sim packet actual body with ffs array
+            paste(this, macProtocol ,&generator_body[totalPacketLength], packetLength);
+            totalPacketLength += packetLength;
+        }
+
+        // Fill mac data link layer head  
+        constexpr SInt32 headerLen = sizeof(IGToSimLinkLayerHeader);
+        AssembleMacLinkLayerHeader(totalPacketLength, messageNumber, mac_header);
+        memcpy(generator_pack, &mac_header, headerLen);
+
+        // Fill mac body then
+        memcpy(generator_pack + headerLen, &generator_body, totalPacketLength);
+
+        // Fill mac tail finally
+        UInt32 constexpr const tail = 0x00000000;
+        memcpy(generator_pack + headerLen + totalPacketLength, &tail, 4);
+
+        cross::MacLinkCommuncation::Instance().SendData(reinterpret_cast<u_char const*>
+        (generator_pack), headerLen + totalPacketLength + 4);
+        return true;
+    }
