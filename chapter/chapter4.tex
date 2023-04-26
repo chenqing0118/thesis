@@ -274,8 +274,8 @@ RegisterProtocolConversion函数负责将执行者加入两个map中，key为指
 \section{图像生成器侧数据交换模块}
 游戏引擎侧数据交换模块负责虚拟仿真机与游戏引擎之间的交流。其利用Tbuspp插件使用TCP消息沟通，数据交换协议则是ProtoBuffer。再发送给游戏引擎的过程中，需要将发送频率的固定，因此该线程会以固定的频率被唤醒。
 \subsection{流程图}
-
-本模块的主要执行流程如图\ref{module31}所示。当发送队列中有消息时，若可以进行发送则直接发送，否则要等待新的发送时机。反馈消息接收时则不需考虑频率，直接接收消息并给到协议转换模块。
+ 本模块的主要执行流程如图\ref{module31}所示。当该模块收到来自指令转换模块的自定义指令时首先将其进行一次序列化。为了保证接收方了解怎样反序列化，还需要为序列添加指令代号，相当于生成了一个虚拟仿真机与图像生成器间交流的通用指令结构。将此结构再一次序列化后可以加入到Tbuspp发送队列中进行发送。
+ 而当从Tbuspp的接收队列中读取了反馈信息后，需要使用通用结构第一次反序列化得到指令代号，根据指令代再使用对应自定义指令结构对剩余部分反序列化。便可以将得到的自定义指令交给指令转换模块。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart3.pdf}
@@ -285,25 +285,27 @@ RegisterProtocolConversion函数负责将执行者加入两个map中，key为指
 \end{figure}
 \subsection{核心类图}
 
-本模块的核心类图如图\ref{module32}所示。其中的核心是类ImageGeneratorContext，它表示在虚拟仿真机中与游戏引擎交流的环境，其中包含控制信息收发的线程和信息队列。
-IImageGeneratorDeviceInterface则是与游戏引擎交流的接口，其中包含了对于ProtoBuffer结构中指令代号的读取方法GetOperateCode，以及发送消息给游戏引擎SendToImageGenerator方法。
-FullFightSimulatorDeviceBase是对该接口的实现，其依赖控制发送频率的类FrameSynchronization。CAEGenericSimulatorDeviceBase代表CAE公司FFS设备，其中含有与该公司设备进行沟通的具体方法。
+本模块的核心类图如图\ref{module32}所示。其中的核心是类ImageGeneratorContext，它表示图像生成器与虚拟仿真机的交流环境，其中主要的成员是代表信息收发进程的ImageGeneratorTaskRunnable。
+该类中的mAssembler成员负责在需要发送自定义指令时为其封装，首先是为指令添加代号等头部信息，生成通用结构FFSPacket。多个FFSPacket可以粘合为一个FFSFrame一起发送。
+\par
+MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于虚拟仿真机接收到自定义指令后不区分类别的将其交给指令转换器，图像生成器需要根据不同的指令调用不同的逻辑执行。
+比如收到控制飞行的指令后，就需要将其中的数据给到飞机实体。具体方法由实现类中的OnExecutedImpl实现。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram3.pdf}
-        \caption{视景系统侧数据交互核心类图}
+        \caption{图像生成器侧数据交互核心类图}
         \label{module32}
     \end{center}
 \end{figure}
 \subsection{顺序图}
-图\ref{seq3}是游戏引擎侧数据交换模块的顺序图。描述了虚拟仿真机与游戏引擎间沟通时各类的交互过程。
-首先交流环境IGContext先通过Tbuspp的配置文件建立连接，Tbuspp插件类会判断连接是否成功。
-连接建立后，交流环境通过send方法通知FFSDevice已有数据准备好发送，此时FrameSync类会介入判断在规定发送频率下此时是否可以发送。
-到达发送时间后，会调用IGDevice中的send方法执行具体发送动作。
+图\ref{seq3}是图像生成器侧数据交换模块的顺序图。描述了虚拟仿真机与图像生成器间沟通时各类的交互过程。
+在系统初始化时，IGContext会首先通过Tbuspp的配置文件初始化交流环境。需要发送信息时，交流环境会通过send方法将自定义指令交给进程实例，该进程实例会调用Assembler中的封装流程获得指令通用结构，最后调用Tbus中的发包方法完成发送。
+接收数据时，进程实例会首先通过popPacket读取Tbus的接收队列，随后将信息交给Assembler类进行解封反序列化等一系列操作，虚拟仿真机中流程到这一步便结束，图像生成器中则还需要将指令分发给对应的handler进行处理。
+
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence3.pdf}
-        \caption{游戏引擎侧数据交换顺序图}
+        \caption{图像生成器侧数据交换顺序图}
         \label{seq3}
     \end{center}
 \end{figure}
