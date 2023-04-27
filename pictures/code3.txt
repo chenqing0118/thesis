@@ -1,8 +1,0 @@
-struct WorkerThread
-    {
-        class MacReceivingTaskRunnable* mTaskRunnable = nullptr;
-        class threading::RunnableThread* mRunnableThread = nullptr;
-    };
-
-WorkerThread mMacLayerReceivingThread = WorkerThread
-    {producerRunnable, threading::RunnableThread::CreateRunnableThread(producerRunnable)};

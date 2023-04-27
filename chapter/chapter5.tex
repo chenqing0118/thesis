@@ -1,10 +1,12 @@
 \chapter{数据同步与平滑机制的引入}
 \section{初步运行测试}
-经过第四章中设计与实现的内容后，我们得到了一个可以连接仿真机和图像生成器并转换双方指令的数据交换子系统。、
-需要渠道飞行训练基地接入专业设备进行初步的功能测试。
+经过第四章中设计与实现的内容后，我们得到了一个可以连接仿真机和图像生成器并转换双方指令的数据交换子系统。
+为测试系统在真实FFS环境下的表现，需要去到飞行训练基地接入专业设备进行初步的功能测试。
 \subsection{测试环境}
-使用真实的FFS仿真机测试需要去到南方航空珠海基地，此处是亚洲最大，机型最全的模拟飞行训练基地，共拥有28台民航局运输司认证的最高D等级FFS，每年有超过7000名飞行员在此训练，是名副其实的中国民航飞行员培养摇篮。
-该测试环境中，需要虚拟仿真机连接三个图像生成器同时工作通过融合投影完成对于模拟座舱前方球幕的投影。其设备布置方式如图\ref{testenv}所示。
+为使用真实仿真机设备，我们去到南方航空珠海训练基地。此处是亚洲最大，机型最全的模拟飞行训练基地，共拥有28台民航局运输司认证的最高D等级FFS，每年有超过7000名飞行员在此训练，是名副其实的中国民航飞行员培养摇篮。
+\par
+该测试环境中各设备布置方式如图\ref{testenv}所示。运行虚拟仿真机的机器需要配置两张网卡，一张通过交换机连接仿真机，另一张通过交换机连接三台图像生成器。
+三台图像生成器各自连接一台投影仪才能实现对模拟座舱前方球幕的融合投影。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/testenv.pdf}
@@ -13,7 +15,7 @@
     \end{center}
 \end{figure}
 \par
-此环境下虚拟仿真机运行于一台机器上，三台图像生成器运行在配置完全相同的三台机器上，它们通过网线连接路由。
+此环境下虚拟仿真机运行于一台机器上，三台图像生成器运行在配置完全相同的三台机器上，它们通过网线连接交换机。
 为了顺利运行视景系统，运行设备上需要配置系统运行的软件环境，详细信息如表\ref{devsoft}所示。
 虚拟仿真机和图像生成器两方都需要C++与Python的运行环境，且双方需要通过Tbuspp插件沟通。
 在虚拟仿真机中，需要使用WinPcap软件侦听流经网卡的数据包。测试环境部署配置完成后应当能保证系统不会因为软件环境问题无法运行。
@@ -42,9 +44,8 @@
     \end{center}
 \end{table}
 \par
-在硬件配置方面，运行图像生成器的机器基本配备最新且性能最强的配件，保障渲染频率能跟上仿真机产生数据的频率。测试环境下的具体硬件配置信息如表\ref{ffshard}所示。
-机房的网络环境十分良好，使用运行虚拟仿真机的设备ping网关时的网络时延为0.1ms，网络抖动几乎为0。也意味着如果测试中出现问题，
-网络环境并不是一个首先需要考虑的因素。
+在硬件配置方面，运行图像生成器的机器基本配备最新且性能最强的配件，保障渲染帧率能跟上仿真机产生数据的频率。测试环境下的具体硬件配置信息如表\ref{ffshard}所示。
+测试环境中的网络完全隔绝外部网络，网络环境非常良好，网络时延在1ms内，网络抖动几乎为0。也意味着如果测试中出现问题，网络环境并不是一个首先需要考虑的因素。
 \begin{table}[h!]
     \begin{center}
         \caption{硬件配置表}
@@ -82,11 +83,117 @@
             \end{tabularx}
     \end{center}
 \end{table}
-\subsection{测试结果与分析}
-在FFS环境下，选择飞机的初始位置为深圳宝安机场跑道，飞机起飞后在机场附近环绕。经测试，系统运行后投影仪可以投影出飞行画面，说明数据交换子系统仅就连接仿真机与图像生成器并转换指令的功能来说不存在问题。
-但同时发现融合投影的画面中存在撕裂现象。如图\ref{tear}所示，在两台投影仪的交界部分存在着画面撕裂，即两台设备各自渲染的部分画面并不能完美拼接在一起。
-且就单一图像生成器而言，画面偶尔会出现肉眼可观察的顿挫现象。
-发现其实使用的并不是同一帧的数据进行计算，最终的画面自然会有偏差
+\subsection{功能测试}
+对于本数据交换子系统的功能测试依照指令代号进行。第三章中提到目前已经验证了21种仿真机指令，我们让飞行员和教练员在模拟座舱中进行操作依次产生这些指令，
+如果投影画面产生了对应指令代号的变化，则说明数据交换子系统对于该类指令的接收、转换、发送、分配使用的过程顺利，可以通过测试。
+表\ref{testcase}给出了对于仿真机指令代号为21H指令的测试用例，该指令负责控制飞机的位置和姿态，其他种类指令的测试用例与此表类似。
+\begin{table}[h!]
+    \begin{center}
+        \caption{控制指令21H测试用例}
+        \label{testcase}
+        \renewcommand\arraystretch{1.5}
+        \begin{tabularx}{0.8\textwidth}{ 
+             >{\centering\arraybackslash\hsize=.2\hsize\linewidth=\hsize}X 
+             >{\raggedright\arraybackslash\hsize=.8\hsize\linewidth=\hsize}X 
+             }
+             \hline
+            \textbf{ID } & \textbf{TC1}\\
+             \hline
+             \textbf{测试名称} & 仿真机21H指令控制测试\\
+             \hline
+             \textbf{待测功能} & 图像生成器能接收并使用转换后的21H指令。\\
+             \hline
+             \textbf{测试步骤} & 1.飞行员通过操纵杆让飞机运动。\par 2.仿真机生成21H指令。\par 3.虚拟仿真机转换其为自定义指令。\par 4.图像生成器收到指令分配给对应处理逻辑。  \\
+             \hline
+             \textbf{预期结果} & 投影画面中的飞机按飞行员的操作运动。\\
+             \hline
+            \end{tabularx}
+    \end{center}
+\end{table}
+\par
+图\ref{21test}展示了投影画面中的飞机根据飞行控制指令沿跑道起飞的过程。证明数据交换子系统对该指令的处理流程通过测试。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=.9\textwidth]{pictures/firstcamera.png}
+        \caption{飞行控制指令测试结果}
+        \label{21test}
+    \end{center}
+\end{figure}
+\par
+图\ref{todtest}展示了投影画面对时间变换指令的响应效果。模拟场景中精确到一天中的每一分钟都可以由时间变换指令控制，
+图中是将时间调整到黄昏时分的环境效果。指令被正确应用，数据交换子系统对时间变换指令的处理流程通过测试。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=.9\textwidth]{pictures/todtest.jpg}
+        \caption{时间变换指令测试结果}
+        \label{todtest}
+    \end{center}
+\end{figure}
+\par
+图\ref{lighttest}展示了投影画面对灯光控制指令的响应效果。飞机身上诸如滑行灯、机翼灯、防撞灯等多种灯光的开关控制均由灯光指令控制。
+图中是飞机在夜间开启滑行灯后的视景效果。指令可以正确应用，数据交换子系统对灯光指令的处理流程通过测试。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=.9\textwidth]{pictures/lighttest.jpg}
+        \caption{灯光指令测试结果}
+        \label{lighttest}
+    \end{center}
+\end{figure}
+\par
+图\ref{snowtest}展示了投影画面对天气控制指令的响应效果。飞行过程中的雨雪天气及等级都由天气指令控制，图中展示了视景中大雪天气的效果，
+视野中不仅有雪花的加入，能见度也大大降低。指令被正确应用，数据交换子系统对天气指令的处理流程通过测试。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=.9\textwidth]{pictures/snowtest.jpg}
+        \caption{天气指令测试结果}
+        \label{snowtest}
+    \end{center}
+\end{figure}
+\par
+当然已通过验证的仿真机指令远不止这些，此处不再逐一列举测试情况。
+飞行过程中会产生一些需送回仿真机的反馈指令，比如飞机在起飞和降落过程中会持续检测三个起落架的离地高度。
+测试时我们对比了图像生成器构建的自定义指令与从仿真机侧捕获到的仿真机指令中的内容。
+表\ref{fbcomp}展示了两方数据的对比结果，仿真机对于高度使用的单位是0.5mm，经换算后与自定义指令一致。
+说明数据交换子系统可以正确处理该反馈指令。
+\begin{table}[h!]
+    \begin{center}
+        \caption{反馈信息对比}
+        \label{fbcomp}
+        \renewcommand\arraystretch{1.5}
+        \begin{tabularx}{0.8\textwidth}{ 
+             |>{\centering\arraybackslash\hsize=.7\hsize\linewidth=\hsize}X 
+             |>{\centering\arraybackslash\hsize=1.15\hsize\linewidth=\hsize}X 
+             |>{\centering\arraybackslash\hsize=1.15\hsize\linewidth=\hsize}X
+             |
+             }
+             \hline 
+            \textbf{起落架编号} & \textbf{自定义指令} & \textbf{仿真机指令}\\   
+             \hline
+             1 & 3.822m & 7644\\
+             \hline
+             2 & 3.787m & 7574\\     
+             \hline
+             3 & 3.787m & 7574\\
+             \hline 
+             ...& ... & ...\\
+             \hline 
+             1 & 40.031m & 80062\\
+             \hline 
+             2 & 39.914m & 79828\\
+             \hline 
+             3 & 39.912m & 79824\\
+             \hline  
+            \end{tabularx}
+    \end{center}
+\end{table}
+
+\section{数据同步机制}
+\subsection{问题分析}
+本次测试中同样发现了一些问题。
+最具代表性的问题如图\ref{tear}所示，发现在飞行的过程中融合投影的画面中存在撕裂现象。
+此处说的画面撕裂并非传统的同一个显示设备的画面上下两部分的撕裂，因为使用了垂直同步也不会产生这种撕裂。
+此时的撕裂是在两台投影仪的交界处存在左右两部分撕裂，即两台设备各自渲染的部分画面并不能完美拼接在一起。
+且就整体画面而言，偶尔会出现肉眼可观察的顿挫现象，即存在跳帧的问题。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/tearmark.png}
@@ -96,9 +203,9 @@
 \end{figure}
 \par
 虚拟仿真机
-\section{数据同步}
-
-\section{数据平滑}
+\subsection{网络帧缓冲}
+\section{数据平滑机制}
+\subsection{问题分析}
 加入数据帧缓冲机制后，画面撕裂和顿挫现象基本消失，三台图像生成器可以同时使用同一帧的数据进行计算，
 而且屏蔽了由于虚拟仿真机接收数据的频率不稳定而导致的时延。但又发现单一图像生成器产生的画面会沿飞机运动方向产生抖动。
 从数据角度来看可能的原因是数据精度不够或者数据变化不平滑。
@@ -106,9 +213,10 @@
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/jitter.png}
         \caption{画面抖动情况}
-        \label{tear}
+        \label{jitter}
     \end{center}
 \end{figure}
+\subsection{插值平滑}
 \par
 系统测试是为了在用户开始使用软件前，尽可能地发现软件中潜在的错误
 和不合理之处，确保最后将高质量的软件交付给用户。为了验证系统的功能和
@@ -167,19 +275,7 @@
 \par
 
 \subsection{功能测试}
-对于本系统的功能测试而言，视景中的飞机能够按照模拟数据中的路径飞行，即可说明从数据读取到协议转换再到最后的信息发送功能都是通过测试的。
-\par 
-图\ref{synctest}是对频率限制工具FrameFrequencyRestriction测试的效果，测试过程中将其频率设置为30Hz，运行csv文件读取部分程序，
-可以看到从读取第18行数据到读取第48行数据中正好间隔1秒钟。多种频率均能通过测试。
 
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=0.4\textwidth]{pictures/frame.png}
-        \caption{30HZ频率限制效果}
-        \label{synctest}
-    \end{center}
-\end{figure}
-\par
 我们在测试中使用到的模拟数据是飞行员在训练基地FFS上操作绕深圳宝安机场飞行一周后得到的数据。
 该数据的采样频率为60Hz，共6万余组数据，每组数据中包含仿真机输出的原始经纬高和欧拉角信息。
 首先测试经过虚拟仿真机发送给游戏引擎的数据是否正确，采用的方法是在GIS软件中绘制这组输出数据，查看绘制路径与飞行员的飞行路径是否相同。
@@ -190,20 +286,8 @@
 在确认虚拟仿真机输出无误后，便可使用此数据进一步测试游戏引擎中飞行控制逻辑。图\ref{firsttest}是飞机第一视角下的飞行画面，可以看到根据模拟数据，飞机准确出现在宝安机场跑道上，
 且后续飞行中的爬升转向时的视角偏转完全符合实际情况，最终飞机按照轨迹终止于场景中的森林公园上空。此测试过程同样表明第一视角摄像机可以正确跟随飞机位置并做出相同的姿态。
 
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=.9\textwidth]{pictures/trace.png}
-        \caption{GIS绘制路径}
-        \label{GIStrace}
-    \end{center}
-\end{figure}
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=.9\textwidth]{pictures/firstcamera.png}
-        \caption{飞机第一视角}
-        \label{firsttest}
-    \end{center}
-\end{figure}
+
+
 \par
 当摄像机位于第一视角下，按下X键即可切换为环绕视角。如图\ref{orbittest}所示，此时摄像机不在位于驾驶舱位置，而是在一定距离外始终看向驾驶舱。
 鼠标左右方向的滑动可以改变Yaw角使摄像机水平方向的环绕，上下的滑动则改变Pitch角是竖直方向的环绕。经测试操作感受与主流游戏基本一致。
@@ -225,53 +309,11 @@
         \label{freetest}
     \end{center}
 \end{figure}
-\par
-飞机在飞行过程中会产生一些反馈信息，沿原路径最终送回仿真机。比如飞机在起飞和降落过程中会持续检测三个起落架的离地高度，
-测试时便选用此信息，最终检查虚拟仿真机输出的原始数据包中此信息的值与训练基地FFS的反馈是否类似。
-表\ref{fbcomp}对比了同一帧下CrossEngine和FFS关于起落架离地高度的反馈信息。由于地形资源存在些许差异，双方在此数据上并不会完全一致，
-在合理范围内即可。
-\begin{table}[h!]
-    \begin{center}
-        \caption{反馈信息对比}
-        \label{fbcomp}
-        \renewcommand\arraystretch{1.5}
-        \begin{tabularx}{0.8\textwidth}{ 
-             |>{\centering\arraybackslash\hsize=.7\hsize\linewidth=\hsize}X 
-             |>{\centering\arraybackslash\hsize=1.15\hsize\linewidth=\hsize}X 
-             |>{\centering\arraybackslash\hsize=1.15\hsize\linewidth=\hsize}X
-             |
-             }
-             \hline 
-            \textbf{起落架编号} & \textbf{CrossEngine} & \textbf{FFS}\\   
-             \hline
-             1 & 3.822m & 3.392m\\
-             \hline
-             2 & 3.787m & 3.368m\\     
-             \hline
-             3 & 3.787m & 3.368m\\
-             \hline 
-             ...& ... & ...\\
-             \hline 
-             1 & 40.031m & 39.894m\\
-             \hline 
-             2 & 39.914m & 39.785m\\
-             \hline 
-             3 & 39.912m & 39.785m\\
-             \hline  
-            \end{tabularx}
-    \end{center}
-\end{table}
+
 
 \subsection{功能测试}
 仿真机与虚拟仿真机通过网线连接。测试中启动与仿真机连接程序后，先选择要使用的网卡。连接建立成功后便可以开始正常接收数据。测试情况如图\ref{vsimcon}所示。
 虚拟仿真机已成功读取到网卡上来自仿真机的原始数据包。
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=.8\textwidth]{pictures/maclink.png}
-        \caption{仿真机连接}
-        \label{vsimcon}
-    \end{center}
-\end{figure}
 \par
 对于数据交换相关用例的测试同样是与服役中的FFS使用同一条预设路径飞行进行对比。本次测试选择的机场为广州白云机场，路径为跑道上的起飞过程。在服役FFS中运行的视频效果如图\ref{flightffs}所示，飞机即将在白云机场02L号跑道上完成起飞。
 图\ref{flightffs}则展示了本视景系统运行该路径的情况，系统可以根据仿真机的数据正确将飞机初始位置置于机场02L号跑道，且在后续起飞过程中视景画面与上述服役FFS视频中完全一致。
