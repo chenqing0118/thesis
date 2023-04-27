@@ -1,4 +1,115 @@
-\chapter{数据同步与平滑机制的设计与实现}
+\chapter{数据同步与平滑机制的引入}
+\section{初步运行测试}
+经过第四章中设计与实现的内容后，我们得到了一个可以连接仿真机和图像生成器并转换双方指令的数据交换子系统。、
+需要渠道飞行训练基地接入专业设备进行初步的功能测试。
+\subsection{测试环境}
+使用真实的FFS仿真机测试需要去到南方航空珠海基地，此处是亚洲最大，机型最全的模拟飞行训练基地，共拥有28台民航局运输司认证的最高D等级FFS，每年有超过7000名飞行员在此训练，是名副其实的中国民航飞行员培养摇篮。
+该测试环境中，需要虚拟仿真机连接三个图像生成器同时工作通过融合投影完成对于模拟座舱前方球幕的投影。其设备布置方式如图\ref{testenv}所示。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/testenv.pdf}
+        \caption{测试环境设备布置}
+        \label{testenv}
+    \end{center}
+\end{figure}
+\par
+此环境下虚拟仿真机运行于一台机器上，三台图像生成器运行在配置完全相同的三台机器上，它们通过网线连接路由。
+为了顺利运行视景系统，运行设备上需要配置系统运行的软件环境，详细信息如表\ref{devsoft}所示。
+虚拟仿真机和图像生成器两方都需要C++与Python的运行环境，且双方需要通过Tbuspp插件沟通。
+在虚拟仿真机中，需要使用WinPcap软件侦听流经网卡的数据包。测试环境部署配置完成后应当能保证系统不会因为软件环境问题无法运行。
+
+\begin{table}[h!]
+    \begin{center}
+        \caption{软件配置表}
+        \label{devsoft}
+        \renewcommand\arraystretch{1.5}
+        \begin{tabularx}{0.8\textwidth}{ 
+             >{\centering\arraybackslash\hsize=.5\hsize\linewidth=\hsize}X 
+             >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+             }
+             \hline
+            \textbf{配置项 } & \textbf{详情}\\
+             \hline
+             C++运行环境 & VS\_C++\_MSVC\\
+           
+             Python运行环境 & Python\thinspace 3.10\\
+             
+             底层网络访问 & WinpCap\thinspace v4.1.3\\
+            
+             服务网格 & Tbuspp \thinspace 0.6.0\\
+             \hline
+            \end{tabularx}
+    \end{center}
+\end{table}
+\par
+在硬件配置方面，运行图像生成器的机器基本配备最新且性能最强的配件，保障渲染频率能跟上仿真机产生数据的频率。测试环境下的具体硬件配置信息如表\ref{ffshard}所示。
+机房的网络环境十分良好，使用运行虚拟仿真机的设备ping网关时的网络时延为0.1ms，网络抖动几乎为0。也意味着如果测试中出现问题，
+网络环境并不是一个首先需要考虑的因素。
+\begin{table}[h!]
+    \begin{center}
+        \caption{硬件配置表}
+        \label{ffshard}
+        \renewcommand\arraystretch{1.5}
+        \begin{tabularx}{\textwidth}{ 
+             >{\centering\arraybackslash\hsize=.4\hsize\linewidth=\hsize}X 
+             >{\centering\arraybackslash\hsize=.4\hsize\linewidth=\hsize}X 
+             >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+             }
+             \hline
+            \textbf{设备} & \textbf{配置项} & \textbf{详情}\\         
+             \hline
+             & CPU & Intel® Core™ i9-12900K Processor\\
+           
+             & GPU & NVIDIA RTX A6000\\
+             
+             图像生成器 & 内存 & 64GB\\
+            
+             & 硬盘 & 8TB\\
+             
+             & 系统 & Windows 10 专业版 21H2\\
+             \hline
+             & CPU & Intel® Core™ i9-12900K Processor\\
+           
+             & GPU & Intel® UHD Graphics 770\\
+             
+             虚拟仿真机 & 内存 & 32GB\\
+            
+             & 硬盘 & 2TB\\
+             
+             & 系统 & Windows 10 专业版 21H2\\
+             \hline
+             
+            \end{tabularx}
+    \end{center}
+\end{table}
+\subsection{测试结果与分析}
+在FFS环境下，选择飞机的初始位置为深圳宝安机场跑道，飞机起飞后在机场附近环绕。经测试，系统运行后投影仪可以投影出飞行画面，说明数据交换子系统仅就连接仿真机与图像生成器并转换指令的功能来说不存在问题。
+但同时发现融合投影的画面中存在撕裂现象。如图\ref{tear}所示，在两台投影仪的交界部分存在着画面撕裂，即两台设备各自渲染的部分画面并不能完美拼接在一起。
+且就单一图像生成器而言，画面偶尔会出现肉眼可观察的顿挫现象。
+发现其实使用的并不是同一帧的数据进行计算，最终的画面自然会有偏差
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/tearmark.png}
+        \caption{画面撕裂情况}
+        \label{tear}
+    \end{center}
+\end{figure}
+\par
+虚拟仿真机
+\section{数据同步}
+
+\section{数据平滑}
+加入数据帧缓冲机制后，画面撕裂和顿挫现象基本消失，三台图像生成器可以同时使用同一帧的数据进行计算，
+而且屏蔽了由于虚拟仿真机接收数据的频率不稳定而导致的时延。但又发现单一图像生成器产生的画面会沿飞机运动方向产生抖动。
+从数据角度来看可能的原因是数据精度不够或者数据变化不平滑。
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=\textwidth]{pictures/jitter.png}
+        \caption{画面抖动情况}
+        \label{tear}
+    \end{center}
+\end{figure}
+\par
 系统测试是为了在用户开始使用软件前，尽可能地发现软件中潜在的错误
 和不合理之处，确保最后将高质量的软件交付给用户。为了验证系统的功能和
 性能是否与需求分析时的规格说明一致，本章节在开发环境和真实FFS环境中分别做综合性的功能测试和性能测试。
@@ -54,33 +165,7 @@
     \end{center}
 \end{table}
 \par
-为了顺利运行系统，服务器上需要配置系统运行的软件环境，详细信息如表\ref{devsoft}所示。
-开发PC测试环境下的软件要求与真实FFS下的测试相同，后不再赘述。两方都需要C++与Python的运行环境，且双方通过Tbuspp沟通。
-在虚拟仿真机中，需要与仿真机进行直接的链路层信息交流，需使用WinPcap软件。测试环境部署配置完成后应当能保证系统不会因为环境问题出错。
 
-\begin{table}[h!]
-    \begin{center}
-        \caption{开发环境软件配置情况}
-        \label{devsoft}
-        \renewcommand\arraystretch{1.5}
-        \begin{tabularx}{0.8\textwidth}{ 
-             >{\centering\arraybackslash\hsize=.5\hsize\linewidth=\hsize}X 
-             >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
-             }
-             \hline
-            \textbf{配置项 } & \textbf{详情}\\
-             \hline
-             C++运行环境 & VS\_C++\_MSVC\\
-           
-             Python运行环境 & Python\thinspace 3.10\\
-             
-             底层网络访问 & WinpCap\thinspace v4.1.3\\
-            
-             服务网格 & Tbuspp \thinspace 0.6.0\\
-             \hline
-            \end{tabularx}
-    \end{center}
-\end{table}
 \subsection{功能测试}
 对于本系统的功能测试而言，视景中的飞机能够按照模拟数据中的路径飞行，即可说明从数据读取到协议转换再到最后的信息发送功能都是通过测试的。
 \par 
@@ -176,50 +261,7 @@
             \end{tabularx}
     \end{center}
 \end{table}
-\section{FFS环境测试}
-真实FFS环境测试去到南方航空珠海基地，这里是亚洲最大，机型最全的模拟飞行训练基地，共拥有28台民航局运输司认证的最高D等级FFS，每年有超过7000名飞行员在此训练，是名副其实的中国民航飞行员培养摇篮。
-在真实FFS环境中，主要对于与仿真机连接、飞机飞行等功能测试；同时对于帧率的稳定性进行测试。
-\subsection{测试环境}
-在真实FFS环境下虚拟仿真机与视景运行机同样位于两台电脑上，此时虚拟仿真机不再读取模拟数据，而是与仿真机进行交流，即可以接受飞行员的操作。
-在硬件配置方面，基本为最新且性能最强的配件，保障视景流畅运行。在测试环境的具体物理配置信息如表\ref{ffshard}所示。
 
-\begin{table}[h!]
-    \begin{center}
-        \caption{FFS环境物理配置}
-        \label{ffshard}
-        \renewcommand\arraystretch{1.5}
-        \begin{tabularx}{\textwidth}{ 
-             >{\centering\arraybackslash\hsize=.4\hsize\linewidth=\hsize}X 
-             >{\centering\arraybackslash\hsize=.4\hsize\linewidth=\hsize}X 
-             >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
-             }
-             \hline
-            \textbf{设备} & \textbf{配置项} & \textbf{详情}\\         
-             \hline
-             & CPU & Intel® Core™ i9-12900K Processor\\
-           
-             & GPU & NVIDIA RTX A6000\\
-             
-             视景运行机 & 内存 & 64GB\\
-            
-             & 硬盘 & 8TB\\
-             
-             & 系统 & Windows 10 专业版 21H2\\
-             \hline
-             & CPU & Intel® Core™ i9-12900K Processor\\
-           
-             & GPU & Intel® UHD Graphics 770\\
-             
-             虚拟仿真机 & 内存 & 32GB\\
-            
-             & 硬盘 & 2TB\\
-             
-             & 系统 & Windows 10 专业版 21H2\\
-             \hline
-             
-            \end{tabularx}
-    \end{center}
-\end{table}
 \subsection{功能测试}
 仿真机与虚拟仿真机通过网线连接。测试中启动与仿真机连接程序后，先选择要使用的网卡。连接建立成功后便可以开始正常接收数据。测试情况如图\ref{vsimcon}所示。
 虚拟仿真机已成功读取到网卡上来自仿真机的原始数据包。

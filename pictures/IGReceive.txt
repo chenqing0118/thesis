@@ -21,10 +21,6 @@ void OnHandleTbusppPacket(const TbusHandler& handler)
        while (circular_queue_.try_pop(packet))
        {
             auto opCode = packet.get_opCode();
-            if (opCode == FFS_MSG::FullFlightSimulatorPacket_EnumFFSCommand_UnknownCommand)
-            {
-                return;
-            }
             if (mFfsPacketHandlerMap.find(opCode) == mFfsPacketHandlerMap.end())
             {
                 auto sourceStr = targetDescriptor->FindValueByNumber(source)->name();

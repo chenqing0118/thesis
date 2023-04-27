@@ -1,11 +1,15 @@
 \chapter{基础数据交换的详细设计与实现}
 \section{仿真机侧数据交换模块}
-仿真机侧数据交换模块负责虚拟仿真机与仿真机之间的交流。他们之间通过数据链路层的原始数据包进行沟通，即除去真实数据外，仅含有Mac地址等信息。因此不能依靠TCP/IP协议收发而是直接访问底层网络。
-该模块会将到来的数据帧拆为指令结构体供后续使用，或者将指令结构体包装为数据帧发送给仿真机。
+仿真机侧数据交换模块负责虚拟仿真机与仿真机之间的交流。仿真机侧发送出的数据帧仅被以太网协议封装过，即除去数据内容外，仅含有以太网协议头。
+此种数据帧如果交给虚拟仿真机的网络协议栈处理将不能得到正确内容。因此在实现中虚拟仿真机需要绕过网络协议栈直接接手数据帧自行处理。
+该模块会将收到的数据帧解封，并拆解为多条仿真机指令供后续使用，或者将多个仿真机反馈指令粘合，并自行添加以太网协议内容封装为数据帧发送给仿真机。
 \subsection{流程图}
 \par
-本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。在接收到消息后需要先读取数据帧中的指令代号信息和长度信息，如果代号已知，则截取其后对应长度的数据段即成功拆分一条仿真机指令。
-由于指令代号有接近百种，项目初期只用到部分指令，对于未知的指令对应的数据段直接跳过。发送反馈消息过程中，则需要对仿真机指令添加以太网协议头部信息，并写入WinPcap的发送队列反馈给仿真机。
+本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。虚拟仿真机在接收到原始数据帧后首先取得头部中的指令部分总长度信息，跳过头部后，根据每条指令的长度信息将粘合在一起的多条指令进行拆分，交付给转换模块。
+当总长度读取完毕后，数据帧的接收流程便结束。此过程中可能遇到暂时没有验证的仿真机指令，将其暂时丢弃即可。
+\par
+反馈消息流程中，该模块会收到来自指令转换模块的仿真机指令，其需要将这些指令粘合并为它们添加总长度，以太网协议头等信息构建成一个数据帧，最后将其写入发送队列结束流程。
+\clearpage
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart1.pdf}
@@ -22,7 +26,7 @@ MacReceivingRunnable是处理信息收发的线程实例，收取道德数据帧
 ISimulatorDeviceInterface代表仿真机设备类的接口，其中包含了对于数据帧中指令代号的读取方法GetSimOperateCode，以及发送消息给仿真机SendToSimulationDevice方法。
 CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的仿真机设备，其中含有解读并转换该设备指令的具体算法。当需要接入其他公司设备时，
 只需要重新实现SimulatorDevice接口。
-
+\clearpage
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram1.pdf}
@@ -63,6 +67,7 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 来自图像生成器的反馈信息最终也会以数据帧的形式给到仿真机。该方法的参数就是一组待发送仿真机指令的引用，
 每个指令中含有自己的指令代号opCode和指令长度packetLength。首先我们需要将全部的仿真机指令粘合在一起，存储在generator\_body中。
 期间需要对指令长度长度进行累积计算，totalPacketLength作为最后整个数据帧头部的长度信息。
+\clearpage
 \par
 完成仿真机指令的粘和后，便需要根据规则构建一个可供仿真机使用的数据帧。首先是添加以太网协议头、CAE头等头部信息。其次将粘合后的指令集generator\_body添加在头部信息后。
 最后还需要添加一个4字节的全为0的尾部，一个数据帧便构建完成。此数据帧不需要任何数据交换协议的变化，直接以原始二进制的形式通过WinPcap最终发出。
@@ -189,7 +194,8 @@ $$N=\frac{a}{\sqrt{1-e^2sin^2(lat)}}$$
 \subsection{流程图}
  本模块的主要执行流程如图\ref{module31}所示。当收到来自指令转换模块的自定义指令时首先将其进行一次序列化。为了保证接收方了解怎样反序列化，还需要为序列添加指令代号，相当于生成了一个虚拟仿真机与图像生成器间交流的通用指令结构。将此结构再一次序列化后可以加入到Tbuspp发送队列中进行发送。
  而当从Tbuspp的接收队列中读取了反馈信息后，需要使用通用结构第一次反序列化得到指令代号，根据指令代再使用对应自定义指令结构对剩余部分反序列化。便可以将得到的自定义指令交给指令转换模块。
-\begin{figure}[h!]
+
+ \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart3.pdf}
         \caption{图像生成器侧数据交互流程图}
@@ -227,7 +233,7 @@ MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于�
 首先为outFFSFrame添加虚拟仿真机的版本信息version，方便对开发过程中的不同版本进行对比。
 之后需要将全部的自定义指令逐一进行序列化并添加于outFFSFrame的对应字段中。全部添加完成后使用AssembleFrameHeader方法为其添加发送方、接受方、发送时间等信息再次序列化。
 进入消息发送阶段，每一个Tbuspp的终端都有唯一的ID，发送前需要查找接收方的ID后通过QueuePacket方法将该序列写入对应的发送队列。
-\begin{figure}[htb]
+\begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/IGSend.txt}
         \caption{自定义指令封装代码}
@@ -242,7 +248,7 @@ inSize是该数据的长度。首先如果发送队列指针为空则说明未�
 接收消息时，首先定义信息缓冲区buffer，长度为1024字节，因为经最初的抓包经验可知不会存在更大的包。
 通过tbuspp\_queue\_peek方法获取到消息的指针msg，和消息的长度outSize。随后将从msg开始，长度为outSize的信息拷贝到buffer完成消息读取。
 最后将接收队列中的该消息移出队列。
-\begin{figure}[htb]
+\begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/TbusIO.txt}
         \caption{Tbuspp收发消息代码}
@@ -256,7 +262,7 @@ inSize是该数据的长度。首先如果发送队列指针为空则说明未�
 \par
 OnHandleTbusppPacket是对自定义指令进一步反序列化并交付使用的过程。当队列中存在自定义指令时，会根据指令的opCode从handlerMap中查找对应的处理者，
 该处理者会调用OnExecuted方法会将指令数据给到mGameWorld中需要它的实体。
-\begin{figure}[htb]
+\begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/IGReceive.txt}
         \caption{通用结构解封代码}
@@ -265,9 +271,6 @@ OnHandleTbusppPacket是对自定义指令进一步反序列化并交付使用的
 \end{figure}
 
 
-\section{初步运行测试}
-啊啊
 \section{本章小结}
-本章在需求分析及概要设计的基础上，对系统包含的三个模块的详细设计与实现做了阐述。
-详细设计通过流程图、核心类图和顺序图说明了各个类之间的交互逻辑，实现则是通过解读关键代码的方式进行说明。
-本章的最后对本系统做了初步测试发现了一些问题，在下一章中将对问题进行分析解决。
+本章在需求分析及概要设计的基础上，对系统包含的仿真机侧数据交换模块、指令转换模块和图像生成器侧数据交换模块的详细设计与实现做了阐述。
+详细设计通过流程图、核心类图和顺序图说明了运行过程中各个类之间的交互逻辑，实现则是通过解读关键代码的方式进行说明。
