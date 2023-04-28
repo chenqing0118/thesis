@@ -327,7 +327,7 @@ $$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
 
 \begin{figure}[h!]
     \begin{center}
-        \includegraphics[width=\textwidth]{pictures/usecase.pdf}
+        \includegraphics[width=0.8\textwidth]{pictures/usecase.pdf}
         \caption{数据交换子系统用例图}
         \label{usecase}
     \end{center}
@@ -339,7 +339,7 @@ $$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
 建立链路层连接，是仿真机与虚拟仿真机建立沟通路径的方式。由于仿真机是底层设备，其产生的数据帧不含有IP头、TCP头等信息，
 与仿真机相关的数据不能直接由虚拟仿真机运行环境中的网络协议栈处理，必须由虚拟仿真机亲自侦听网卡上的原始数据帧，并亲自解封或封装。
 另需额外注意侦听数据时要使用即刻投递模式，否则网卡的缓存机制会降低侦听的频率，产生较大的延迟，最终影响到图像的生成。用例的具体情况如表\ref{usecase1}所示。
-
+\clearpage
 \begin{table}[htbp]
     \begin{center}
         \caption{建立链路层连接用例描述表}
@@ -494,8 +494,9 @@ $$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
     \end{center}
 \end{table}
 \par
-仿真机发出的数据帧中每条指令前都有该指令代号信息，据此信息才能选择使用对应的结构体去反序列化。代号和指令构成了一个通用结构。ProtoBuffer作为二进制数据交换协议，同样需要一个代号来决定如何
-反序列化指令字段。因此需要为自定义指令额外封装指令代号等信息，整个过程需要两次序列化。作为接收方则同样需要两次反序列化。具体情况如表\ref{usecase6}所示。
+ProtoBuffer作为二进制数据交换协议，同样需要一个代号来决定使用何种结构
+反序列化指令字段。因此需要为自定义指令额外封装指令代号等信息，构成一个通用结构，整个过程需要两次序列化。
+作为接收方则同样需要两次反序列化。具体情况如表\ref{usecase6}所示。
 \begin{table}[htbp]
     \begin{center}
         \caption{自定义指令封装用例描述表}
@@ -612,7 +613,7 @@ IGReceive和IGSend分别表示图像生成器接收和发送消息的线程。�
 第三层负责图像生成器的交流，同样使用环境到线程到设备再到具体连接的结构进行开发，图像生成器中另外含有使用数据的逻辑部分。
 \begin{figure}[h]
     \begin{center}
-        \includegraphics[width=0.8\textwidth]{pictures/devdiagram.pdf}
+        \includegraphics[width=0.7\textwidth]{pictures/devdiagram.pdf}
         \caption{开发视图}
         \label{dev}
     \end{center}
