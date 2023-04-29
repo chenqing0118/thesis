@@ -1,0 +1,37 @@
+    void FfsContext::OnBeginFrame(FrameParam* frameParam)
+    {
+        mMessageNumber = frameParam->GetFrameCount();
+        static UInt64 clockerTimeLastFrame = SyncClocker::GetInstance()->GetClockerTimeStampUs();
+        UInt64 clockerTime = SyncClocker::GetInstance()->GetClockerTimeStampUs();
+        mMessageNumberDeltaInFrame = 0;
+        mEngineDelta = (clockerTime - clockerTimeLastFrame) / 1000.0;   // Unit ms
+        clockerTimeLastFrame = clockerTime;
+
+        int networkFrameRate = tbusSys->GetNetworkFrameRate(tbusComp.Read());
+        if (networkFrameRate)
+        {
+            mNetworkFps = 1000.0 / networkFrameRate;   // Unit ms
+            mNetworkFrameDelta = (mNetworkFrameDelta - std::floor(mNetworkFrameDelta))
+                    + mEngineDelta / mNetworkFps;
+        }
+    }
+    void ControllableAircraft::TickAircraftPosition(float deltaTime, GameWorld* inWorld)
+    {
+        float networkFrameRemainedDelta = ffsSys->GetContext()->GetNetworkFrameRemainedDelta();
+        // lerp position
+        Double3 firstPositionToLerp = Double3(mX, mY, mZ);
+        Double3 secondPositionToLerp = ffsSys->GetContext()->GetAircraftPoistionToLerp();
+        if (!secondPositionToLerp.IsNearlyZero())
+        {
+             Double3 lerpedPosition = LerpStable(firstPositionToLerp, 
+                      secondPositionToLerp, networkFrameRemainedDelta);
+        }
+        // lerp rotation
+        Double3 firstRotationToLerp = Double3(mHeading, mPitch, mRoll);
+        Double3 secondRotationToLerp = ffsSys->GetContext()->GetAircraftRotationToLerp();
+        if (!secondRotationToLerp.IsNearlyZero())
+        {
+            Double3 lerpedRotation = LerpAngle<AngleType::Degree>(firstRotationToLerp,
+                     secondRotationToLerp, networkFrameRemainedDelta);
+        }
+    }

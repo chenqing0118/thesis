@@ -1,0 +1,29 @@
+int FetchMsgWithBuffer(const TbusHandler& handler)
+{
+    static bool is_first_fetch = true;
+    ce::net::CrossEnginePacket packet;
+    while (circular_queue_.try_pop(packet))
+    {
+        received_packets_[packet.source()].emplace_back(packet);
+        received_count += 1;
+    }
+
+    UInt32 cachedFrameCount = TbusppSetting::GetTbusppSetting().cachedFrameCount;
+    UInt32 latestMessageNumber = received_packets_
+                  [ce::net::EnumFFSTarget::SimulationDevice].back().msg_number();
+    for (auto& [source, packets] : received_packets_)
+    {
+        if (is_first_fetch && source == ce::net::EnumFFSTarget::SimulationDevice)
+        {
+            if (packets.size() <= cachedFrameCount)
+            {   cached_count += packets.size();
+                continue; }
+            else
+               { is_first_fetch = false; } }
+        for (auto it = packets.begin(); it != packets.end();)
+        {   auto packet = *it;
+            handler(reinterpret_cast<const void*>(&packet), latestMessageNumber)
+            it = packets.erase(it);  }
+    }
+    return 0;
+}
