@@ -168,9 +168,8 @@ CrossEngine从最初的架构设计到三方基础库的选型都为Runtime尺�
 以上是航空常用4种坐标系，在实际需求中必然涉及飞机的旋转以及不同坐标系的变换。
 向量的旋转和坐标的变换可以通过旋转矩阵表示\cite{rotate1}。最直观的旋转操作是按照固定坐标轴依次旋转，在三维空间中，按z轴旋转$\alpha$角度可以表示为如下形式。
 旋转矩阵中的列向量为旋转后坐标系的坐标轴在旋转前的坐标系中的投影，自然互相正交且为单位向量，所以旋转矩阵为正交矩阵。旋转的逆变换可以直接使用转置矩阵作为逆矩阵。
-~\\
 
-\begin{math} 
+\begin{equation} 
     \begin{gathered}
         \begin{bmatrix} p_x' \\ p_y' \\ p_z'\end{bmatrix} 
         \quad 
@@ -183,10 +182,9 @@ CrossEngine从最初的架构设计到三方基础库的选型都为Runtime尺�
         \end{bmatrix}
         \quad
         \begin{bmatrix} p_x\\ p_y \\ p_z \end{bmatrix}
-    \end{gathered}
-\end{math}
-
-~\\
+    \end{gathered}\nonumber
+\end{equation}
+\clearpage
 \par
 坐标系的转换也可视为旋转，特别要注意，上述公式中矩阵的意义是将点在旋转后的坐标系中的坐标，转换为旋转前的坐标系中的坐标。
 此时将旋转矩阵中的列向量视作旋转后坐标轴在旋转前坐标轴上的投影，或者叫做方向余弦。
