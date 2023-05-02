@@ -156,7 +156,7 @@
 %% 盲审命令，空白字段设置请看 .cls文件 \newcommand*{\blind}
 %% 此外，请按照盲审要求自行去掉个人简历、致谢等页面中的个人信息
 %%**********************！！！非常重要的盲审命令，送审前必选！！！****************
-%\blind
+\blind
 %%**********************！！！非常重要的盲审命令，送审前必选！！！****************
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -190,7 +190,7 @@
     \par
     在初步测试中，数据交换子系统可以正确处理并传递已解读的指令。然而也发现在需要连接多台图像生成器融合投影的情况下，图像的拼接部分有撕裂，抖动的现象。
     经过分析排查后，引入了网络帧缓存和插值机制，实现多图像生成器的数据同步与平滑，改善了投影效果。
-    目前该视景系统可以在CAE仿真机操控下，以至少60帧率实现地景数据库中各机场附近环绕飞行，标志着迈出了动起来的坚实第一步。以此为根基，后续对天气、灯光、植被等多种系统进行研究与引入，尽早达成训练用模拟机的验收标准。
+    目前该视景系统可以在CAE仿真机操控下，以至少60帧率实现地景数据库中各机场附近环绕飞行，标志着迈出了动起来的坚实第一步。以此为根基，后续对天气、灯光、植被等多种效果进行研究与引入，尽早达成训练用模拟机的验收标准。
     }          
 	\keywords{飞行模拟；视景系统；数据交换；数据同步}          
 \end{abstract}
@@ -218,7 +218,7 @@
     However, it is also found that the splicing part of the image has screen tearing and jitter when multiple image generators are connected.
     To improve projection effect, the network frame cache and interpolation mechanism are introduced to realize data synchronization and smoothing in multiple image generators.
     At present, under the control of CAE imitator, the system realizes the circling flight around airports in the landscape database at least 60 frame rate. The flying plane in the visual system marks a crucial first step.
-    The next step is to study and introduce weather, lighting, vegetation and other systems, so as to up to standard of D-Level simulator as soon as possible.
+    The next step is to study and introduce weather, lighting, vegetation and other effects, so as to up to standard of training simulator as soon as possible.
     }
     % 英文关键词。关键词之间用英文半角逗号隔开，末尾无符号。
 	\englishkeywords{Flight Simulation, Visual System, Data Exchange, Data Synchronism}
@@ -274,7 +274,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 致谢，应放在结论之后
-\input{chapter/acknowledgement.tex}
+% \input{chapter/acknowledgement.tex}
 
 
 % 参考文献。应放在\backmatter之前。

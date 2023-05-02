@@ -1118,67 +1118,67 @@
 \renewcommand*{\njut@cap@abstract@en@chaptername}%
             {研究生毕业论文英文摘要首页用纸}
 
-\renewcommand*{\maketitle}{%
-  \thispagestyle{empty}
-  \pdfbookmark[0]{\njut@cap@cover}{cover}
-  \begin{center}
-    \vskip 10mm
-    \includegraphics[width=1.96cm]{\njut@cap@institute@holder} \\
-    \includegraphics[height=2cm]{\njut@cap@institute@holder} \\
-    \vskip 8mm
-    {\bf\kaishu\zihao{1}\makebox[10em][s]{\njut@cap@cover@thesis}}\\
-    \vskip 5mm
-    {\bf\kaishu\zihao{1}（\makebox[9em][s]{\njut@cap@cover@apply}）}\\
-    \vskip\stretch{1}
-    {\bgroup
-    \bfseries\kaishu\zihao{3} %中文封面字号
-    \def\tabcolsep{1pt}
-    \def\arraystretch{1.5}
-	\ifdefempty{\njut@value@title}{\njut@covertable@twolinetitle}{\njut@covertable@onelinetitle}
-    \egroup}\\
-    \vskip \stretch{1}
-    {\bf\kaishu\zihao{4}\njut@value@date}
-  \end{center}
-  \ifnjut@backinfo
-    \clearpage
-    \thispagestyle{empty}
-    \vspace*{\stretch{1}}
-    {\bf\kaishu\zihao{-3}
-    \noindent
-    \begin{tabular}{p{6.2em}l}
-    \makebox[6em][s]{\njut@cap@coverback@studentnum}： &\njut@value@studentnum\\
-    \makebox[6em][s]{\njut@cap@coverback@defenddate}： &\njut@value@defenddate\\
-    \makebox[6em][s]{\njut@cap@coverback@supervisor}： &\njut@cap@coverback@sign\\
-    \end{tabular}}
-    \clearpage
-  \else
-    \cleardoublepage
-  \fi
-}
-\renewcommand*{\makeenglishtitle}{%
-  \thispagestyle{empty}
-  \begin{center}
-    \vspace*{20pt}
-    \bf\sffamily\zihao{2}\njut@value@en@title
-    \vskip \stretch{1}
-    \normalfont\rmfamily\zihao{4}\njut@cap@cover@en@by
-    \vskip 3pt
-    \bf\sffamily\zihao{4}\njut@value@en@author
-    \vskip\stretch{1}
-    \normalfont\rmfamily\zihao{4}\njut@cap@cover@en@supervisor
-    \vskip 3pt
-    \normalfont\sffamily\zihao{4}\njut@value@en@supervisor
-    \vskip\stretch{1}
-    \normalsize\rmfamily\njut@cap@cover@en@blindstatement
-    \vskip\stretch{2}
-    \includegraphics[width=2.5cm]{\njut@cap@institute@holder} \\
-    \vskip 3mm
-    %\normalfont\njut@value@en@department\\
-    %\njut@value@en@institute
-    \vskip 30pt
-    \normalfont\normalsize\njut@value@en@date
-  \end{center}
-}
+% \renewcommand*{\maketitle}{%
+%   \thispagestyle{empty}
+%   \pdfbookmark[0]{\njut@cap@cover}{cover}
+%   \begin{center}
+%     \vskip 10mm
+%     \includegraphics[width=1.96cm]{\njut@cap@institute@holder} \\
+%     \includegraphics[height=2cm]{\njut@cap@institute@holder} \\
+%     \vskip 8mm
+%     {\bf\kaishu\zihao{1}\makebox[10em][s]{\njut@cap@cover@thesis}}\\
+%     \vskip 5mm
+%     {\bf\kaishu\zihao{1}（\makebox[9em][s]{\njut@cap@cover@apply}）}\\
+%     \vskip\stretch{1}
+%     {\bgroup
+%     \bfseries\kaishu\zihao{3} %中文封面字号
+%     \def\tabcolsep{1pt}
+%     \def\arraystretch{1.5}
+% 	\ifdefempty{\njut@value@title}{\njut@covertable@twolinetitle}{\njut@covertable@onelinetitle}
+%     \egroup}\\
+%     \vskip \stretch{1}
+%     {\bf\kaishu\zihao{4}\njut@value@date}
+%   \end{center}
+%   \ifnjut@backinfo
+%     \clearpage
+%     \thispagestyle{empty}
+%     \vspace*{\stretch{1}}
+%     {\bf\kaishu\zihao{-3}
+%     \noindent
+%     \begin{tabular}{p{6.2em}l}
+%     \makebox[6em][s]{\njut@cap@coverback@studentnum}： &\njut@value@studentnum\\
+%     \makebox[6em][s]{\njut@cap@coverback@defenddate}： &\njut@value@defenddate\\
+%     \makebox[6em][s]{\njut@cap@coverback@supervisor}： &\njut@cap@coverback@sign\\
+%     \end{tabular}}
+%     \clearpage
+%   \else
+%     \cleardoublepage
+%   \fi
+% }
+% \renewcommand*{\makeenglishtitle}{%
+%   \thispagestyle{empty}
+%   \begin{center}
+%     \vspace*{20pt}
+%     \bf\sffamily\zihao{2}\njut@value@en@title
+%     \vskip \stretch{1}
+%     \normalfont\rmfamily\zihao{4}\njut@cap@cover@en@by
+%     \vskip 3pt
+%     \bf\sffamily\zihao{4}\njut@value@en@author
+%     \vskip\stretch{1}
+%     \normalfont\rmfamily\zihao{4}\njut@cap@cover@en@supervisor
+%     \vskip 3pt
+%     \normalfont\sffamily\zihao{4}\njut@value@en@supervisor
+%     \vskip\stretch{1}
+%     \normalsize\rmfamily\njut@cap@cover@en@blindstatement
+%     \vskip\stretch{2}
+%     \includegraphics[width=2.5cm]{\njut@cap@institute@holder} \\
+%     \vskip 3mm
+%     %\normalfont\njut@value@en@department\\
+%     %\njut@value@en@institute
+%     \vskip 30pt
+%     \normalfont\normalsize\njut@value@en@date
+%   \end{center}
+% }
 
 }
 \newcommand{\njuthesis}{\texttt{NJU-Thesis}}

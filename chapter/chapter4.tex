@@ -1,4 +1,4 @@
-\chapter{基础数据交换的详细设计与实现}
+\chapter{数据交换子系统的详细设计与实现}
 \section{仿真机侧数据交换模块}
 仿真机侧数据交换模块负责虚拟仿真机与仿真机之间的交流。仿真机侧发送出的数据帧仅被以太网协议封装过，即除去数据内容外，仅含有以太网协议头。
 此种数据帧如果交给虚拟仿真机的网络协议栈处理将不能得到正确内容。因此在实现中虚拟仿真机需要绕过网络协议栈直接接手数据帧自行处理。
@@ -55,7 +55,7 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 首先应该跳过数据帧的头部，如第三章第一节中提到的数据帧组织结构，数据帧头部含有以太网协议头、CAE头等信息，通过ParseMacLinkLayerHeader方法保留这部分头部信息，同时跳过对应的长度，使指针cursor来到数据帧中的指令部分。
 \par
 数据帧头部信息中含有该帧除去头部的长度，使用临时变量leftBytesToRead保存。当其仍大于零时，说明还有仿真机指令没有读取。
-每条指令的头部特定位置也有单一指令的长度，是以4字节为单位，curPacketLength计算了该指令以字节为单位的长度。有了这些信息，我们便能够以cursor为起点，curPacketLength为长度拷贝指令段到一个packet中。
+每条指令的头部特定位置也有单一指令的长度，是以4字节为单位，curPacketLength计算了该指令以字节为单位的长度。有了这些信息，便能够以cursor为起点，curPacketLength为长度拷贝指令段到一个packet中。
 这样就完成了一个仿真机指令的拆分，当读取完整个数据帧后，虚拟仿真机便完成了接收数据帧的过程。
 \begin{figure}[h!]
     \centering
@@ -65,7 +65,7 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 \end{figure}
 \par
 来自图像生成器的反馈信息最终也会以数据帧的形式给到仿真机。该方法的参数就是一组待发送仿真机指令的引用，
-每个指令中含有自己的指令代号opCode和指令长度packetLength。首先我们需要将全部的仿真机指令粘合在一起，存储在generator\_body中。
+每个指令中含有自己的指令代号opCode和指令长度packetLength。首先需要将全部的仿真机指令粘合在一起，存储在generator\_body中。
 期间需要对指令长度长度进行累积计算，totalPacketLength作为最后整个数据帧头部的长度信息。
 \clearpage
 \par

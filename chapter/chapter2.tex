@@ -17,7 +17,7 @@ WireShark是开源网络包分析工具。主要作用是能够在网卡接口�
 WinPcap（windows packet capture）是由意大利人Loris Degioanni在2000年提出并实现的一个架构，目的在于为Windows平台应用程序提供访问网络底层的能力\cite{winpcap1}。
 传统socket通信中，两台主机之间通信，socket接收到的内容都是已经过网络协议栈处理的通信内容，并不会含有如数据帧头，IP头，TCP/UDP等内容。WinPcap功能在于独立于操作系统的网络协议栈而发送和接收数据帧，非常适合做网络协议分析、网络监控等工作\cite{winpcap2}。
 \par
-抓包系统必须绕过操作系统的协议栈来访问在网络上传输的数据帧,这就要求一部分运行在操作系统核心内部，直接与网卡驱动交互。Winpcap作为Win平台上的抓包和网络分析架构，它包括一个内核态的包过滤器，一个底层的动态链接库packet.dll和一个用户态的程序接口库wpcap.dll\cite{winpcap3}。
+抓包系统必须绕过操作系统的网络协议栈以获取网络上传输的数据帧,要求必须有一部分运行在操作系统核心，直接与网卡设备交互。Winpcap作为Win平台上的抓包和网络分析架构，它包括一个操作系统内核的包过滤器，一个底层的动态链接库packet.dll和一个用户态的程序接口库wpcap.dll\cite{winpcap3}。
 本系统中用其收取和发送来自仿真机的数据帧，协助仿真机与视景系统交流。
 \begin{figure}[h!]
     \begin{center}
