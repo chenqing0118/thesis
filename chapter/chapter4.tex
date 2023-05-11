@@ -4,12 +4,6 @@
 此种数据帧如果交给虚拟仿真机的网络协议栈处理将不能得到正确内容。因此在实现中虚拟仿真机需要绕过网络协议栈直接接手数据帧自行处理。
 该模块会将收到的数据帧解封，并拆解为多条仿真机指令供后续使用，或者将多个仿真机反馈指令粘合，并自行添加以太网协议内容封装为数据帧发送给仿真机。
 \subsection{流程图}
-\par
-本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。虚拟仿真机在接收到原始数据帧后首先取得头部中的指令部分总长度信息，跳过头部后，根据每条指令的长度信息将粘合在一起的多条指令进行拆分，交付给转换模块。
-当总长度读取完毕后，数据帧的接收流程便结束。此过程中可能遇到暂时没有验证的仿真机指令，将其暂时丢弃即可。
-\par
-反馈消息流程中，该模块会收到来自指令转换模块的仿真机指令，其需要将这些指令粘合并为它们添加总长度、以太网协议头等信息构建成一个数据帧，最后将其写入发送队列结束流程。
-\clearpage
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart1.pdf}
@@ -17,16 +11,14 @@
         \label{module11}
     \end{center}
 \end{figure}
-\subsection{核心类图}
+\vspace{7pt}
 \par
-本模块的核心类图如图\ref{module12}所示。其中的核心是类SimulationDeviceContext，它表示仿真机与虚拟仿真机的交流环境
-MacLinkCommunication类负责初始化与某一网卡设备的侦听关系，并负责数据帧的实际收取和发送。
-MacReceivingRunnable是处理信息收发的线程实例，收取到的数据帧会加入接收数据帧的队列MacReceivingQueue，线程实例从中取数据并交由指令转换模块。
-当需要反馈时，线程实例会调用设备实例中的发送方法，最终通过MacLink实现发送。
-ISimulatorDeviceInterface代表仿真机设备类的接口，其中包含了对于数据帧中指令代号的读取方法GetSimOperateCode，以及发送消息给仿真机SendToSimulationDevice方法。
-CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的仿真机设备，其中含有解读并转换该设备指令的具体算法。当需要接入其他公司设备时，
-只需要重新实现SimulatorDevice接口。
-\clearpage
+本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。虚拟仿真机在接收到原始数据帧后首先取得头部中的指令部分总长度信息，跳过头部后，根据每条指令的长度信息将粘合在一起的多条指令进行拆分，交付给转换模块。
+当总长度读取完毕后，数据帧的接收流程便结束。此过程中可能遇到暂时没有验证的仿真机指令，将其暂时丢弃即可。
+\par
+反馈消息流程中，该模块会收到来自指令转换模块的仿真机指令，其需要将这些指令粘合并为它们添加总长度、以太网协议头等信息构建成一个数据帧，最后将其写入发送队列结束流程。
+
+\subsection{核心类图}
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram1.pdf}
@@ -34,12 +26,16 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
         \label{module12}
     \end{center}
 \end{figure}
+\vspace{7pt}
+本模块的核心类图如图\ref{module12}所示。其中的核心是类SimulationDeviceContext，它表示仿真机与虚拟仿真机的交流环境
+MacLinkCommunication类负责初始化与某一网卡设备的侦听关系，并负责数据帧的实际收取和发送。
+MacReceivingRunnable是处理信息收发的线程实例，收取到的数据帧会加入接收数据帧的队列MacReceivingQueue，线程实例从中取数据并交由指令转换模块。
+当需要反馈时，线程实例会调用设备实例中的发送方法，最终通过MacLink实现发送。
+ISimulatorDeviceInterface代表仿真机设备类的接口，其中包含了对于数据帧中指令代号的读取方法GetSimOperateCode，以及发送消息给仿真机SendToSimulationDevice方法。
+CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的仿真机设备，其中含有解读并转换该设备指令的具体算法。当需要接入其他公司设备时，
+只需要重新实现SimulatorDevice接口。
+
 \subsection{顺序图}
-图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了仿真机与虚拟仿真机沟通过程中各类的交互过程。
-首先交流环境类SimDeviceContext以mac地址作为参数尝试初始化MacLink，即开始侦听对应网卡设备，MacLink类中利用WinpPcap实现侦听，并判断是否侦听成功。
-成功建立连接后，便可以进行数据的收发。交流环境线程MacTaskRunnable运行后会循环执行OnMacRecevied方法，
-当有数据到达时会对其进行解封处理并加入MacQueue队列等待指令转换。
-当有消息需要反馈时，交流环境调用线程实例的send方法，线程实例调用具体设备实例的send方法，而设备实例最终通过MacLink对象实现发送。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence1.pdf}
@@ -47,9 +43,23 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
         \label{seq1}
     \end{center}
 \end{figure}
+\vspace{7pt}
+图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了仿真机与虚拟仿真机沟通过程中各类的交互过程。
+首先交流环境类SimDeviceContext以mac地址作为参数尝试初始化MacLink，即开始侦听对应网卡设备，MacLink类中利用WinpPcap实现侦听，并判断是否侦听成功。
+成功建立连接后，便可以进行数据的收发。交流环境线程MacTaskRunnable运行后会循环执行OnMacRecevied方法，
+当有数据到达时会对其进行解封处理并加入MacQueue队列等待指令转换。
+当有消息需要反馈时，交流环境调用线程实例的send方法，线程实例调用具体设备实例的send方法，而设备实例最终通过MacLink对象实现发送。
+
 \subsection{关键代码}
 图\ref{codeSimRec}中是虚拟仿真机接收数据帧时的代码。当有数据包达到时，OnDataLinkLayerReceviced会作为回调函数被被调用。
 参数pkt\_data是收取到的数据流指针，类型为u\_char*表示要按字节读取数据流中的信息。outPackets是该方法的输出结果，一个数据帧中可能含有多条仿真机指令，这些指令所在的数据段被拆分后放入集合outPackets中。
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/SimReceive.txt}
+    \caption{接收数据帧代码}
+    \label{codeSimRec}
+\end{figure}
+\vspace{12pt}
 \par
 临时变量cursor指向数据流中当前正被处理的字节，其初始指向位置与pkt\_data相同。
 首先应该跳过数据帧的头部，如第三章第一节中提到的数据帧组织结构，数据帧头部含有以太网协议头、CAE头等信息，通过ParseMacLinkLayerHeader方法保留这部分头部信息，同时跳过对应的长度，使指针cursor来到数据帧中的指令部分。
@@ -57,17 +67,12 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 数据帧头部信息中含有该帧除去头部的长度，使用临时变量leftBytesToRead保存。当其仍大于零时，说明还有仿真机指令没有读取。
 每条指令的头部特定位置也有单一指令的长度，是以4字节为单位，curPacketLength计算了该指令以字节为单位的长度。有了这些信息，便能够以cursor为起点，curPacketLength为长度拷贝指令段到一个packet中。
 这样就完成了一个仿真机指令的拆分，当读取完整个数据帧后，虚拟仿真机便完成了接收数据帧的过程。
-\begin{figure}[h!]
-    \centering
-     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/SimReceive.txt}
-    \caption{接收数据帧代码}
-    \label{codeSimRec}
-\end{figure}
+
+
 \par
-来自图像生成器的反馈信息最终也会以数据帧的形式给到仿真机。该方法的参数就是一组待发送仿真机指令的引用，
+来自图像生成器的反馈信息最终也会以数据帧的形式给到仿真机。如图\ref{codeSimSend}所示，该方法的参数就是一组待发送仿真机指令的引用，
 每个指令中含有自己的指令代号opCode和指令长度packetLength。首先需要将全部的仿真机指令粘合在一起，存储在generator\_body中。
 期间需要对指令长度长度进行累积计算，totalPacketLength作为最后整个数据帧头部的长度信息。
-\clearpage
 \par
 完成仿真机指令的粘和后，便需要根据规则构建一个可供仿真机使用的数据帧。首先是添加以太网协议头、CAE头等头部信息。其次将粘合后的指令集generator\_body添加在头部信息后。
 最后还需要添加一个4字节的全为0的尾部，一个数据帧便构建完成。此数据帧不需要任何数据交换协议的变化，直接以原始二进制的形式通过WinPcap最终发出。
@@ -104,6 +109,12 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
 当调用实例化模板类中的Convert方法时，该方法会调用对应指令的Convert方法。
 这样设计的原因是当增加仿真机指令类型时不用考虑编写对应的转换器，为协同开发带来便利。
 
+
+\subsection{顺序图}
+图\ref{seq2}是协议转换模块的顺序图。描述了仿真机指令与自定义指令的转换中各类的交互过程。
+在系统启动后，CAEDevice的构造函数会完成所有转换器的注册，即将指令代号与指令转换器作为键值对加入map中。
+在指令转换前，需要先通过指令代号到map中获取对应的转换器。
+调用实例化转换器中的Convert方法时，该方法会调用到仿真机指令中的Convert实现方法。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram2.pdf}
@@ -111,11 +122,7 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
         \label{module22}
     \end{center}
 \end{figure}
-\subsection{顺序图}
-图\ref{seq2}是协议转换模块的顺序图。描述了仿真机指令与自定义指令的转换中各类的交互过程。
-在系统启动后，CAEDevice的构造函数会完成所有转换器的注册，即将指令代号与指令转换器作为键值对加入map中。
-在指令转换前，需要先通过指令代号到map中获取对应的转换器。
-调用实例化转换器中的Convert方法时，该方法会调用到仿真机指令中的Convert实现方法。
+\vspace{12pt}
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence2.pdf}
@@ -130,10 +137,6 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
 \par
 中间的FFSPacket则表示单一的自定义指令，第一个枚举类型代表指令代号，第二个bytes类型的字段content则是已经经过序列化的该指令具体内容。接收方可以根据opcode信息实现content的反序列化。
 最后则是一个自定义指令的具体案例，AircraftGcsStatus是用于更新飞机位置和姿态的自定义指令，其中含有当前帧飞机在笛卡尔坐标系中的位置以及旋转姿态。
-\par
-完成proto文件的编写后，就可以用对应的ProtoBuffer编译器将该文件编译成目标语言。如果编译为C++后会得到.pb.h和.pb.cc文件，分别表示自定义指令的头文件和实现文件，
-其中提供了一系列的get/set函数用来修改和读取结构化数据中的数据成员。当需要将该结构化数据序列化时，类中已经提供相应的方法来把对象变成字节序列。
-对想要读取数据的一方来说，也只需要使用类中的反序列化方法来将这个字节序列重新转换为结构化数据。
 \begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/ProtoStruct.txt}
@@ -141,6 +144,11 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
         \label{protostruct}
     \end{center}
 \end{figure}
+\par
+完成proto文件的编写后，就可以用对应的ProtoBuffer编译器将该文件编译成目标语言。如果编译为C++后会得到.pb.h和.pb.cc文件，分别表示自定义指令的头文件和实现文件，
+其中提供了一系列的get/set函数用来修改和读取结构化数据中的数据成员。当需要将该结构化数据序列化时，类中已经提供相应的方法来把对象变成字节序列。
+对想要读取数据的一方来说，也只需要使用类中的反序列化方法来将这个字节序列重新转换为结构化数据。
+
 \par
 图\ref{21convert}是一对指令转换的实现。该方法将仿真机中负责飞机位置和姿态调整的21H号指令，转换为自定义指令AircraftGcsStatus。
 该对于仿真机指令中的浮点数据一般都需要进行数字表示方式的转换后才能赋值给自定义指令。该指令中比较特殊的一点是，仿真机是通过经度纬度和海拔给出的飞机位置，而图像生成器中需要使用地心地固坐标系这种笛卡尔系确定位置。
@@ -152,18 +160,19 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
         \label{21convert}
     \end{center}
 \end{figure}
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.4\textwidth]{pictures/latitude.pdf}
+        \caption{纬度示意图}
+        \label{latitude}
+    \end{center}
+\end{figure}
 \par
 由大地经度，大地纬度和海拔高度组成的LLA坐标系，是广泛应用的一个地球坐标系。
 这里需要说明大地纬度的定义并不是某点同地心连线后与赤道平面的夹角，而是该点地表法线与赤道平面的夹角。如图\ref{latitude}所示由于地球是一个两级略扁的椭球体，这两种定义并不相同。
 海拔高度的定义也是沿法线的方向到地表的距离。
 地心地固坐标系ECEF是以地心为原点，x轴指向赤道与本初子午线的交点，y轴指向北地极，z轴由手性决定的笛卡尔坐标系。
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=0.5\textwidth]{pictures/latitude.pdf}
-        \caption{纬度示意图}
-        \label{latitude}
-    \end{center}
-\end{figure}
+
 \par
 图\ref{LLA2ECEF}中的代码给出了经纬度海拔坐标系LLA转换为地心地固坐标系ECEF的算法。
 在两种坐标系下地球都是默认为两级略扁的规则椭球体，赤道长半轴为6378137.0米，两极短半轴为6356752.314245米，扁率为1/298.257223563。
@@ -193,23 +202,19 @@ $$N=\frac{a}{\sqrt{1-e^2sin^2(lat)}}$$
 图像生成器数据交换模块负责图像生成器与虚拟仿真机之间的交流。其利用Tbuspp插件使用TCP协议沟通，数据交换协议则是ProtoBuffer。
 此过程中为了对自定义指令添加头部信息构建通用结构，需要对两次序列化，解封过程同样需要两次反序列化。
 \subsection{流程图}
- 本模块的主要执行流程如图\ref{module31}所示。当收到来自指令转换模块的自定义指令时首先将其进行一次序列化。为了保证接收方了解怎样反序列化，还需要为序列添加指令代号，相当于生成了一个虚拟仿真机与图像生成器间交流的通用指令结构。将此结构再一次序列化后可以加入到Tbuspp发送队列中进行发送。
- 而当从Tbuspp的接收队列中读取了反馈信息后，需要使用通用结构第一次反序列化得到指令代号，根据指令代再使用对应自定义指令结构对剩余部分反序列化。便可以将得到的自定义指令交给指令转换模块。
-
- \begin{figure}[h!]
+\begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart3.pdf}
         \caption{图像生成器侧数据交互流程图}
         \label{module31}
     \end{center}
 \end{figure}
-\subsection{核心类图}
+ 本模块的主要执行流程如图\ref{module31}所示。当收到来自指令转换模块的自定义指令时首先将其进行一次序列化。为了保证接收方了解怎样反序列化，还需要为序列添加指令代号，相当于生成了一个虚拟仿真机与图像生成器间交流的通用指令结构。将此结构再一次序列化后可以加入到Tbuspp发送队列中进行发送。
+ 而当从Tbuspp的接收队列中读取了反馈信息后，需要使用通用结构第一次反序列化得到指令代号，根据指令代再使用对应自定义指令结构对剩余部分反序列化。便可以将得到的自定义指令交给指令转换模块。
 
+\subsection{核心类图}
 本模块的核心类图如图\ref{module32}所示。其中的核心是类ImageGeneratorContext，它表示图像生成器与虚拟仿真机的交流环境，其中主要的成员是代表信息收发进程的ImageGeneratorTaskRunnable。
 该类中的mAssembler成员负责在需要发送自定义指令时为其指令添加代号等头部信息，生成通用结构FFSPacket。多个FFSPacket可以粘合为一个FFSFrame一起发送。
-\par
-MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于虚拟仿真机接收到自定义指令后不区分类别的将其交给指令转换器，图像生成器需要根据不同的指令调用不同的逻辑执行。
-比如收到控制飞行的指令后，就需要将其中的数据给到飞机实体。具体方法由实现类中的OnExecutedImpl实现。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram3.pdf}
@@ -217,6 +222,10 @@ MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于�
         \label{module32}
     \end{center}
 \end{figure}
+\par
+MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于虚拟仿真机接收到自定义指令后不区分类别的将其交给指令转换器，图像生成器需要根据不同的指令调用不同的逻辑执行。
+比如收到控制飞行的指令后，就需要将其中的数据给到飞机实体。具体方法由实现类中的OnExecutedImpl实现。
+
 \subsection{顺序图}
 图\ref{seq3}是图像生成器侧数据交换模块的顺序图。描述了虚拟仿真机与图像生成器间沟通时各类的交互过程。
 在系统初始化时，IGContext会首先通过Tbuspp的配置文件初始化交流环境。需要发送信息时，交流环境会通过send方法将自定义指令交给进程实例，该进程实例会调用Assembler中的封装流程获得指令通用结构，最后调用Tbus中的发包方法完成发送。
