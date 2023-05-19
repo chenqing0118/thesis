@@ -5,7 +5,7 @@
 %% 作者：njuhan: https://github.com/njuHan
 %% 源模版repo: https://github.com/njuHan/njuthesis-nju-thesis-template
 
-\documentclass[winfonts,master,oneside]{njuthesis}
+\documentclass[winfonts,master,twoside]{njuthesis}
 %% 审阅模式很重要，命令是下方使用的/blind
 %% njuthesis 文档类的可选参数有：
 %%   winfonts, linuxfonts, macfonts, adobefonts winfonts 选项使得文档使用Windows 系统提供的字体；linuxfonts 选项使得文档使用Linux 系统提供的字体；macfonts 选项使得文档使用Mac 系统提供的字体；adobefonts 选项使得文档使用Adobe提供的OTF中文字体(需自行下载安转)
@@ -156,7 +156,7 @@
 %% 盲审命令，空白字段设置请看 .cls文件 \newcommand*{\blind}
 %% 此外，请按照盲审要求自行去掉个人简历、致谢等页面中的个人信息
 %%**********************！！！非常重要的盲审命令，送审前必选！！！****************
-\blind
+% \blind
 %%**********************！！！非常重要的盲审命令，送审前必选！！！****************
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -275,7 +275,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 致谢，应放在结论之后
-% \input{chapter/acknowledgement.tex}
+\input{chapter/acknowledgement.tex}
 
 
 % 参考文献。应放在\backmatter之前。
