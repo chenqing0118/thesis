@@ -67,7 +67,12 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 数据帧头部信息中含有该帧除去头部的长度，使用临时变量leftBytesToRead保存。当其仍大于零时，说明还有仿真机指令没有读取。
 每条指令的头部特定位置也有单一指令的长度，是以4字节为单位，curPacketLength计算了该指令以字节为单位的长度。有了这些信息，便能够以cursor为起点，curPacketLength为长度拷贝指令段到一个packet中。
 这样就完成了一个仿真机指令的拆分，当读取完整个数据帧后，虚拟仿真机便完成了接收数据帧的过程。
-
+\begin{figure}[h!]
+    \centering
+     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/SimSend.txt}
+    \caption{发送数据帧代码}
+    \label{codeSimSend}
+\end{figure}
 
 \par
 来自图像生成器的反馈信息最终也会以数据帧的形式给到仿真机。如图\ref{codeSimSend}所示，该方法的参数就是一组待发送仿真机指令的引用，
@@ -76,17 +81,41 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 \par
 完成仿真机指令的粘和后，便需要根据规则构建一个可供仿真机使用的数据帧。首先是添加以太网协议头、CAE头等头部信息。其次将粘合后的指令集generator\_body添加在头部信息后。
 最后还需要添加一个4字节的全为0的尾部，一个数据帧便构建完成。此数据帧不需要任何数据交换协议的变化，直接以原始二进制的形式通过WinPcap最终发出。
-\begin{figure}[h!]
-    \centering
-     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/SimSend.txt}
-    \caption{发送数据帧代码}
-    \label{codeSimSend}
-\end{figure}
+
 
 \section{指令转换模块}
-指令转换模块负责仿真机指令与自定义指令之间的转换。经过转换后的指令才能被对方理解并使用。首先仿真机指令中对于浮点数的表达方式是由该厂商自行设计的，对于不同用途不同精度要求的数据其数字表示方式均存在差异。
+指令转换模块负责仿真机指令与自定义指令之间的转换。经过转换后的指令才能被对方理解并使用，同时屏蔽了两方的差异，满足视景系统的可扩展性。
+结合视景系统的实际需求与指令中的共性，本文设计的部分自定义指令如表\ref{selfcommand}所示，可以满足基本飞行、灯光指示、雨雪天气变换等效果。
+转换过程中首先需注意仿真机指令中对于浮点数的表达方式是由该厂商自行设计的，对于不同用途不同精度要求的数据其数字表示方式均存在差异。
 因此这两种结构之间的转换需要严格依照设计文档中的说明设计转换算法，而不是简单的赋值。
-其次仿真机指令中最重要的无疑是关于飞机位置和姿态的指令，但由仿真机给出的位置是由经纬度高度组成的数据，而图像生成器中使用的坐标系是笛卡尔坐标系，必须经过坐标系的转换才能使用该信息。
+其次对于最重要飞机位置和姿态的指令，由于仿真机给出的位置是由经纬度高度组成的数据，而图像生成器中使用的坐标系是笛卡尔坐标系，必须经过坐标系的转换才能使用该信息。
+\begin{table}[h!]
+    \begin{center}
+        \caption{部分自定义指令说明}
+        \label{selfcommand}
+        \renewcommand\arraystretch{1.2}
+        \begin{tabularx}{\textwidth}{ 
+            | >{\centering\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | >{\raggedright\arraybackslash\hsize=\hsize\linewidth=\hsize}X 
+            | }
+            \hline
+            \textbf{自定义指令名称} & \textbf{指令用途} \\
+            \hline
+            GeodeticCSUpdateStruct & 控制场景中飞机的笛卡尔世界坐标位置和飞行姿态。\\
+            \hline
+            FlightLightUpdateStruct &  控制飞机航行灯、防撞灯、着陆灯、频闪灯等多种机身灯光的照明状态。\\
+            \hline
+            AirportLightUpdateStruct & 控制机场进近灯模组、着陆灯模组、滑行灯模组等机场灯光的照明状态。\\
+            \hline
+            WeatherUpdateStruct & 主要控制雨雪天气变换和等级，模拟不同天气下的视觉效果。\\
+            \hline
+            VisibilityUpdateStruct & 控制飞行员能见度的指令，用于模拟雾天不同级别的飞机盲降过程。\\
+            \hline
+            ImageGenerationGeneralFBStruct & 视景系统的反馈指令之一，负责碰撞信息的反馈，同时兼任心跳链接的任务。\\
+            \hline
+        \end{tabularx}
+    \end{center}
+\end{table}
 \subsection{流程图}
 \par
 本模块的主要执行流程如图\ref{module21}所示。
@@ -109,12 +138,6 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
 当调用实例化模板类中的Convert方法时，该方法会调用对应指令的Convert方法。
 这样设计的原因是当增加仿真机指令类型时不用考虑编写对应的转换器，为协同开发带来便利。
 
-
-\subsection{顺序图}
-图\ref{seq2}是协议转换模块的顺序图。描述了仿真机指令与自定义指令的转换中各类的交互过程。
-在系统启动后，CAEDevice的构造函数会完成所有转换器的注册，即将指令代号与指令转换器作为键值对加入map中。
-在指令转换前，需要先通过指令代号到map中获取对应的转换器。
-调用实例化转换器中的Convert方法时，该方法会调用到仿真机指令中的Convert实现方法。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram2.pdf}
@@ -122,7 +145,13 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
         \label{module22}
     \end{center}
 \end{figure}
-\vspace{12pt}
+\subsection{顺序图}
+图\ref{seq2}是协议转换模块的顺序图。描述了仿真机指令与自定义指令的转换中各类的交互过程。
+在系统启动后，CAEDevice的构造函数会完成所有转换器的注册，即将指令代号与指令转换器作为键值对加入map中。
+在指令转换前，需要先通过指令代号到map中获取对应的转换器。
+调用实例化转换器中的Convert方法时，该方法会调用到仿真机指令中的Convert实现方法。
+
+% \vspace{12pt}
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence2.pdf}
@@ -137,6 +166,11 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
 \par
 中间的FFSPacket则表示单一的自定义指令，第一个枚举类型代表指令代号，第二个bytes类型的字段content则是已经经过序列化的该指令具体内容。接收方可以根据opcode信息实现content的反序列化。
 最后则是一个自定义指令的具体案例，AircraftGcsStatus是用于更新飞机位置和姿态的自定义指令，其中含有当前帧飞机在笛卡尔坐标系中的位置以及旋转姿态。
+
+\par
+完成proto文件的编写后，就可以用对应的ProtoBuffer编译器将该文件编译成目标语言。如果编译为C++后会得到.pb.h和.pb.cc文件，分别表示自定义指令的头文件和实现文件，
+其中提供了一系列的get/set函数用来修改和读取结构化数据中的数据成员。当需要将该结构化数据序列化时，类中已经提供相应的方法来把对象变成字节序列。
+对想要读取数据的一方来说，也只需要使用类中的反序列化方法来将这个字节序列重新转换为结构化数据。
 \begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/ProtoStruct.txt}
@@ -145,14 +179,16 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
     \end{center}
 \end{figure}
 \par
-完成proto文件的编写后，就可以用对应的ProtoBuffer编译器将该文件编译成目标语言。如果编译为C++后会得到.pb.h和.pb.cc文件，分别表示自定义指令的头文件和实现文件，
-其中提供了一系列的get/set函数用来修改和读取结构化数据中的数据成员。当需要将该结构化数据序列化时，类中已经提供相应的方法来把对象变成字节序列。
-对想要读取数据的一方来说，也只需要使用类中的反序列化方法来将这个字节序列重新转换为结构化数据。
-
-\par
 图\ref{21convert}是一对指令转换的实现。该方法将仿真机中负责飞机位置和姿态调整的21H号指令，转换为自定义指令AircraftGcsStatus。
 该对于仿真机指令中的浮点数据一般都需要进行数字表示方式的转换后才能赋值给自定义指令。该指令中比较特殊的一点是，仿真机是通过经度纬度和海拔给出的飞机位置，而图像生成器中需要使用地心地固坐标系这种笛卡尔系确定位置。
 其中涉及到坐标系间的转换。而飞机的旋转是在该位置的东北天坐标系下定义，该坐标系三个轴分别是与大地水准面相切的东方，北方以及地表的法线方向。
+
+\par
+由大地经度，大地纬度和海拔高度组成的LLA坐标系，是广泛应用的一个地球坐标系。
+这里需要说明大地纬度的定义并不是某点同地心连线后与赤道平面的夹角，而是该点地表法线与赤道平面的夹角。如图\ref{latitude}所示由于地球是一个两级略扁的椭球体，这两种定义并不相同。
+海拔高度的定义也是沿法线的方向到地表的距离。
+地心地固坐标系ECEF是以地心为原点，x轴指向赤道与本初子午线的交点，y轴指向北地极，z轴由手性决定的笛卡尔坐标系。
+\clearpage
 \begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/21Convert.txt}
@@ -168,12 +204,6 @@ IGCommand是自定义指令类，SimCommand是仿真机指令类，真正的Conv
     \end{center}
 \end{figure}
 \par
-由大地经度，大地纬度和海拔高度组成的LLA坐标系，是广泛应用的一个地球坐标系。
-这里需要说明大地纬度的定义并不是某点同地心连线后与赤道平面的夹角，而是该点地表法线与赤道平面的夹角。如图\ref{latitude}所示由于地球是一个两级略扁的椭球体，这两种定义并不相同。
-海拔高度的定义也是沿法线的方向到地表的距离。
-地心地固坐标系ECEF是以地心为原点，x轴指向赤道与本初子午线的交点，y轴指向北地极，z轴由手性决定的笛卡尔坐标系。
-
-\par
 图\ref{LLA2ECEF}中的代码给出了经纬度海拔坐标系LLA转换为地心地固坐标系ECEF的算法。
 在两种坐标系下地球都是默认为两级略扁的规则椭球体，赤道长半轴为6378137.0米，两极短半轴为6356752.314245米，扁率为1/298.257223563。
 B. R. Bowring在1985年便提出了两种坐标间的转换方法\cite{cha4}。代码中a为长半轴，b为短半轴，e为椭球的偏心率，N为椭球的曲率半径。
@@ -183,7 +213,7 @@ $$N=\frac{a}{\sqrt{1-e^2sin^2(lat)}}$$
 \begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/LLA2ECEF.txt}
-        \caption{LLA转ECEF坐标算法}
+        \caption{LLA转ECEF坐标代码}
         \label{LLA2ECEF}
     \end{center}
 \end{figure}
@@ -230,7 +260,7 @@ MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于�
 图\ref{seq3}是图像生成器侧数据交换模块的顺序图。描述了虚拟仿真机与图像生成器间沟通时各类的交互过程。
 在系统初始化时，IGContext会首先通过Tbuspp的配置文件初始化交流环境。需要发送信息时，交流环境会通过send方法将自定义指令交给进程实例，该进程实例会调用Assembler中的封装流程获得指令通用结构，最后调用Tbus中的发包方法完成发送。
 接收数据时，进程实例会首先通过popPacket读取Tbus的接收队列，随后将信息交给Assembler类进行解封反序列化等一系列操作，虚拟仿真机中流程到这一步便结束，图像生成器中则还需要将指令分发给对应的handler进行处理。
-
+% \clearpage
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence3.pdf}
@@ -243,13 +273,7 @@ MsgHandler则是在图像生成器侧信息接收部分的专属类。不同于�
 首先为outFFSFrame添加虚拟仿真机的版本信息version，方便对开发过程中的不同版本进行对比。
 之后需要将全部的自定义指令逐一进行序列化并添加于outFFSFrame的对应字段中。全部添加完成后使用AssembleFrameHeader方法为其添加发送方、接受方、发送时间等信息再次序列化。
 进入消息发送阶段，每一个Tbuspp的终端都有唯一的ID，发送前需要查找接收方的ID后通过QueuePacket方法将该序列写入对应的发送队列。
-\begin{figure}[h!]
-    \begin{center}
-        \lstinputlisting[basicstyle= \zihao{-5}]{pictures/IGSend.txt}
-        \caption{自定义指令封装代码}
-        \label{IGsend}
-    \end{center}
-\end{figure}
+
 \par
 图\ref{tbusio}中的代码展示了Tbuspp在发送和收取信息时的一些细节。发送函数QueuePacket中，参数busid表示数据的接受方，inData是将要发送数据的指针，
 inSize是该数据的长度。首先如果发送队列指针为空则说明未正确初始化。之后根据busid获得接收方实例，同时配置使用一些默认的发送控制参数param。
@@ -258,6 +282,13 @@ inSize是该数据的长度。首先如果发送队列指针为空则说明未�
 接收消息时，首先定义信息缓冲区buffer，长度为1024字节，因为经最初的抓包经验可知不会存在更大的包。
 通过tbuspp\_queue\_peek方法获取到消息的指针msg，和消息的长度outSize。随后将从msg开始，长度为outSize的信息拷贝到buffer完成消息读取。
 最后将接收队列中的该消息移出队列。
+\begin{figure}[h!]
+    \begin{center}
+        \lstinputlisting[basicstyle= \zihao{-5}]{pictures/IGSend.txt}
+        \caption{自定义指令封装代码}
+        \label{IGsend}
+    \end{center}
+\end{figure}
 \begin{figure}[h!]
     \begin{center}
         \lstinputlisting[basicstyle= \zihao{-5}]{pictures/TbusIO.txt}

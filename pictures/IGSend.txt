@@ -4,15 +4,11 @@ bool SendToFFSTarget(const vector<FFSPacket>& inPackets, cross::FFS_TARGET inTar
         cross::FFSFrame outFFSFrame;
 
         auto* version = new ce::net::Version();
-        version->set_major(VsdVersion::Instance().GetMajor());
-        version->set_minor(VsdVersion::Instance().GetMinor());
         outFFSFrame.set_allocated_version(version);
 
         for (int index = 0; index < inPackets.size(); ++index)
-        {
-            inPackets[index].SerializeToArray(packetBuffer, outLength);
-            outFFSFrame.add_packets()->CopyFrom(packetBuffer);
-        }
+        {   inPackets[index].SerializeToArray(packetBuffer, outLength);
+            outFFSFrame.add_packets()->CopyFrom(packetBuffer); }
 
         AssembleFrameHeader(FFS_TARGET::SimulationDevice, 
             inTarget, inSimFrame.MessageNumber, outFFSFrame);

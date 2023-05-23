@@ -79,17 +79,39 @@
 仿真机发送指令中的字段并不是可以直接读取的浮点数，需要做出进一步的转换。角度信息一般占32位，其数值单位为$360°/2^{32}$，即一份是一个非常小的角度，可表示范围是-180°到179.999°。
 对于海拔这类高度或长度而言，单位统一为0.5mm，即一份为半个毫米。此类数据只需要通过乘法做单位转换。
 \par
-经纬度这种八字节属性的转换则稍微复杂。其中前四个字节为高位，且前24位表示符号，剩余8位表示高位数字，后四个字节为低位，整个字段的单位是$360°/2^{40}$。
-且由于补码原因，需要对低位数字进行判断。低位数一定是一个正数，若为负数，则需要按照补码规则转换为正数再与高位相加。图\ref{llconv}中给出了转换经纬度数字表示形式时使用的算法。
+经纬度这种八字节属性的转换则稍微复杂。如下方两个例子所示，前四个字节为高位，且前24位表示符号，剩余8位表示高位数字，后四个字节为低位，整个字段的单位是$360°/2^{40}$。
+且由于补码原因，需要对低位数字进行判断。因为低位4字节不带有符号信息，若低位转换为浮点数后为负数，则需要按照补码规则转换为正数再与高位部分相加。算法\ref{llconv}中给出了经纬度数字表示方式转换的过程。
 $$ffffff80 \qquad 00000000 \qquad represents \qquad -180.00degrees$$
 $$00000040 \qquad 00000000 \qquad represents \qquad 90.00 degrees$$
 
-\begin{figure}[h!]
-    \centering
-     \lstinputlisting[basicstyle= \zihao{-5}]{pictures/llConvert.txt}
-    \caption{经纬度数字转换算法}
-    \label{llconv}
-\end{figure}
+% \begin{figure}[h!]
+%     \centering
+%      \lstinputlisting[basicstyle= \zihao{-5}]{pictures/llConvert.txt}
+%     \caption{经纬度数字表示方式转换}
+%     \label{llconv}
+% \end{figure}
+\begin{algorithm}[!htb]
+	\renewcommand{\algorithmicrequire}{\textbf{输入：}}
+	\renewcommand{\algorithmicensure}{\textbf{输出：}}
+	\caption{仿真机经纬度数字表示方式转换}
+	\label{llconv}
+	\begin{algorithmic}[1]
+		\REQUIRE
+			4字节高位数字$\mathbf{s\_msw}$,
+			4字节低位数字$\mathbf{s\_lsw}$
+		\ENSURE
+			双精度浮点型经纬度数字$\mathbf{outV}$
+        \STATE v1 = s\_msw*POW2\_32;//将高位4字节数字转换为8字节双精度浮点数字，并乘以2的32次方留出低位位置。
+        \STATE v2 = s\_lsw;//将低位4字节数字转换为8字节双精度浮点数字。
+        \STATE 处理没有符号信息的低位数字。
+        \IF{v2<0}
+        \STATE 将$\mathbf{v2}$中补码表示的负数变换为正数。
+        \ENDIF
+        \STATE v3=v1+v2;//将高低位数字相加。
+        \STATE outV=v3*REV2\_DEG;//数字单位的变换。
+        \RETURN outV
+	\end{algorithmic}
+\end{algorithm}
 \vspace{12pt}
 \par
 完成数字形式转换后便可以进行正式的合理性检查，为本文对飞行中截取到的六万余条21H指令进行了转换，将其位置在GIS系统中进行标注，最终形成了如图\ref{GIStrace}所示的飞行轨迹。轨迹起始位置精确的位于宝安机场的跑道上，
@@ -607,6 +629,7 @@ IGReceive和IGSend分别表示图像生成器接收和发送消息的线程。�
 第一层负责与仿真机交流，使用交流环境到线程实例到具体设备再到链路层连接的结构进行数据帧收发的处理。
 中间层负责对双方指令的转换，其中使用到策略模式实现繁多指令间的转化。
 第三层负责图像生成器的交流，同样使用环境到线程实例到设备再到具体连接的结构进行开发，图像生成器中另外含有使用数据的逻辑部分。
+该侧的数据交换协议采用ProtoBuffer二进制协议，提升序列化效率，确保达到帧率要求。
 \begin{figure}[h]
     \begin{center}
         \includegraphics[width=0.7\textwidth]{pictures/devdiagram.pdf}

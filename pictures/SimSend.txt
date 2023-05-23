@@ -12,10 +12,8 @@ bool CAEGenericSimulatorDeviceBase::SendToSimulationDevice
             // checkOpcode
             auto OpCode = macProtocol.opcode();
             if (!IsValidateProtocol(OpCode))
-            {
-                LOG_WARN("invalidate protocol {}H found , ignore it", OpCode);
-                return false;
-            }
+            { LOG_WARN("invalidate protocol {}H found , ignore it", OpCode);
+                return false; }
             // Make sim packet actual body with ffs array
             paste(this, macProtocol ,&generator_body[totalPacketLength], packetLength);
             totalPacketLength += packetLength;
@@ -25,10 +23,8 @@ bool CAEGenericSimulatorDeviceBase::SendToSimulationDevice
         constexpr SInt32 headerLen = sizeof(IGToSimLinkLayerHeader);
         AssembleMacLinkLayerHeader(totalPacketLength, messageNumber, mac_header);
         memcpy(generator_pack, &mac_header, headerLen);
-
         // Fill mac body then
         memcpy(generator_pack + headerLen, &generator_body, totalPacketLength);
-
         // Fill mac tail finally
         UInt32 constexpr const tail = 0x00000000;
         memcpy(generator_pack + headerLen + totalPacketLength, &tail, 4);

@@ -2,15 +2,11 @@
     {
         if (mClient.out_queue_ == nullptr) 
             return false;
-        
         tbuspp_id_t dest = tbuspp_busid_aton(busid.c_str());
-
-        tbuspp_msg_param_t param;
         tbuspp_init_msg_param(&param);
 
         std::unique_lock<std::mutex> locker(mTbusppDataMutex);
         int result = tbuspp_queue_write(mClient.out_queue_, dest, inData, inSize, &param);
-
         return result;
     }
 
@@ -19,7 +15,6 @@
         static char buffer[1024] = { 0 };
         if (mClient.in_queue_ == nullptr)
             return false;
-
         tbuspp_msg_desc_t desc = { 0 };
         auto msg = tbuspp_queue_peek(mClient.in_queue_, &outSize, &desc);
 
