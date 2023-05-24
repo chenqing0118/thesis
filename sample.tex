@@ -177,19 +177,18 @@
 % 开始前言部分
 \frontmatter
 \begin{abstract}
-    {全动飞行模拟机是为飞行员提供模拟飞行训练环境的专业设备，能够一比一还原对应型号客机的驾驶体验。
-     我国民用航空领域市场广阔，且中国商飞C919客机已然落地，飞行模拟机高度依赖进口的局面亟需打破。
+    {全动飞行模拟机是能够还原对应型号客机驾驶体验的飞行训练设备，是各型号客机必备的孪生产品。
+     视景系统是负责提供视觉效果的部分，需要与仿真机进行指令数据的交换，由视景系统中的图像生成器依据指令内容渲染图像。
+     我国民航领域市场广阔且C919客机已然落地，整套模拟机设备高度依赖进口的局面亟需打破。
     \par
-    本项目着眼于提供飞行图像的视景系统中数据交换子系统的设计实现。
-    仿真机是一台模拟机的核心，视景系统的运作需要仿真机的指令驱动。
-    然而进口仿真机并不对外开放接口，为了基于其开发视景系统，本文首先通过网络流量分析的方法结合文档验证了仿真机网络最高层为数据链路层，
-    并解读了仿真机与视景系统沟通的二十余种指令信息。
-    为了将视景系统接入该仿真机，在数据交换子系统中设计并实现了充当仿真机网络协议栈、多种指令转化以及与视景系统的图像生成器沟通等功能。
-    过程中使用到ProtoBuffer协议来提升交换效率，设计了自定义指令集屏蔽仿真机间的差异。
+    本项目基于进口仿真机开发自研视景系统，本文设计并实现了视景系统中负责与仿真机沟通的数据交换子系统。
+    由于进口设备不对外开放接口，本文首先通过抓取数据帧的方式解析了仿真机关键指令的数据交换协议，并利用WinPcap绕过操作系统的网络协议栈，实现了处理仿真机数据帧的特殊网络协议栈。
+    其次设计了二十余种便于图像生成器使用的自定义指令，并实现了与仿真机指令间的转换方法，屏蔽仿真机间的差异，形成以虚拟仿真机为中间桥梁，连接两侧仿真机与图像生成器的系统架构，为全面国产化做准备。
+    最后设计了与图像生成器数据交换的数据包组织结构，实现了不同自定义指令的处理方法，使用ProtoBuffer协议提升数据交换效率，满足帧率需求。
     \par
-    在初步测试中，数据交换子系统可以正确处理并传递已解读的指令。然而也发现在需要连接多台图像生成器融合投影的情况下，图像的拼接部分有撕裂，抖动的现象。
-    经过分析排查后，引入了网络帧缓存和插值机制，实现多图像生成器的数据同步与平滑，改善了投影效果。
-    目前该视景系统可以在CAE仿真机操控下，以至少60帧率实现地景数据库中各机场附近环绕飞行，标志着迈出了动起来的坚实第一步。以此为根基，后续对天气、灯光、植被等多种效果进行研究与引入，尽早达成训练用模拟机的验收标准。
+    在初步测试中，数据交换子系统可以正确解析数据帧并转换已明确的仿真机指令，最终产生正确的视觉效果。然而也发现在连接多台图像生成器融合投影的情况下，图像的拼接部分有撕裂，抖动的现象。
+    经过分析排查后，在图像生成器数据交换部分设计实现了网络帧缓存和插值机制，达成多图像生成器间数据同步与平滑，改善了投影效果。
+    目前该视景系统可以在进口仿真机驱动下，以至少60Hz帧率实现飞行和基础灯光天气效果。今后需实现更多指令内容以达成中国民用航空总局的验收标准。
     }          
 	\keywords{飞行模拟；视景系统；数据交换；数据同步}          
 \end{abstract}
@@ -198,26 +197,26 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 论文的英文摘要
 \begin{englishabstract}
-	{Flight simulation in most people's concept may be a kind of game to experience flight. 
-    However, it's a more significant function for flight simulation to assist flight training. Daily training by professional simulator is an important subject for every pilot.
-    The simulator that meets the requirements of flight training is called Full Flight Simulator(FFS).
-    Currently, the FFS equipment of China depends on imports. FFS independent research and development must be accelerated because the international situation has changed dramatically and 
-    the COMAC C919 has received a certificate from the Civil Aviation Administration of China.
-    
+	{Full flight simulator is a flight training equipment which can simulate the piloting experience of passenger airplanes.
+    It is necessary that each type of passenger airplane has corresponding flight simulator.
+    Visual system is the part responsible for providing visual effects and needs to exchange instructions with the imitator.
+    Finally, The image generator in the visual system renders images according to the instructions.
+    Because China has a broad civil aviation market and COMAC C919 has been developed, the situation that whole set of simulator equipment is highly dependent on imports needs to be broken.
     \par
-    This project is based on the self-developed visual system who undertakes visual effects of FFS. 
-    The visual system needs to be driven by the instructions of imitator, which is the core of a simulator.
-    However, the imported imitators do not open the interface. In order to develop the visual system based on it, 
-    through the method of network traffic analysis and documents in this paper, it is found that the top layer of the imitator network is the data link layer.
-    At the same time, we verify more than 20 kinds of instruction that the imitator communicates with the visual system.
-    In the data exchange subsystem, functions such as acting as the network protocol stack of the imitator, converting various instructions and communicating with the image generator of the visual system are designed and implemented, for the sake of connecting the visual system to the imitator.
-    The ProtoBuffer protocol is used to improve the data exchange efficiency, and a user-defined instruction set is designed to shield the discrepancies between the imitators.
+    This project is aimed to design a self-developed visual system based on imported imitator.
+    In this thesis, the data exchange subsystem of visual system, which is responsible for communicating with the imitator, was designed and implemented.
+    Because imported imitator dose not provide interfaces, the thesis analyzes the data exchange protocol of the key instructions of the imitator by capturing data frames at first.
+    A special network protocol stack for processing imitator data frames is implemented by using WinPcap to bypass the network protocol stack of the operating system.
+    Tnen more than 20 kinds of customized instructions are designed, and conversion methods between customized instructions and simulator instructions are implemented.
+    Preparing for thorough domestic imitator, it shields the discrepancies between the imitators and establish a system architecture that the virtual imitator serves as the bridge to connect the imitator and the image generator.
+    At last, the thesis designes a data packet structure for data exchange with the image generator and implements the processing of different customized instructions. 
+    ProtoBuffer protocol is used to improve the efficiency of data exchange to meet the frame rate requirements.
     \par
-    In preliminary tests, the data exchange subsystem is able to correctly process and deliver the verified instructions.
+    In preliminary tests, the data exchange subsystem is able to correctly process and convert the verified imitator instructions， so image generator renders the right visual effect.
     However, it is also found that the splicing part of the image has screen tearing and jitter when multiple image generators are connected.
-    To improve projection effect, the network frame cache and interpolation mechanism are introduced to realize data synchronization and smoothing in multiple image generators.
-    At present, under the control of CAE imitator, the system realizes the circling flight around airports in the landscape database at least 60 frame rate. The flying plane in the visual system marks a crucial first step.
-    The next step is to study and introduce weather, lighting, vegetation and other effects, so as to up to standard of training simulator as soon as possible.
+    To alleviate the problems, the network frame cache and interpolation mechanism are introduced in image generator data exchange part to realize data synchronization and smoothing in multiple image generators.
+    At present, under the control of imported imitator, the visual system realizes the flight and basic illumination and weather effects at least 60 frame rate. 
+    More instructions need to be implemented in the future to meet the acceptance standards of the Civil Aviation Administration of China.
     }
     % 英文关键词。关键词之间用英文半角逗号隔开，末尾无符号。
 	\englishkeywords{Flight Simulation, Visual System, Data Exchange, Data Synchronism}
