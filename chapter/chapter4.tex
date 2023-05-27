@@ -4,6 +4,7 @@
 此种数据帧如果交给虚拟仿真机的网络协议栈处理将不能得到正确内容。因此在实现中虚拟仿真机需要绕过网络协议栈直接接手数据帧自行处理。
 该模块会将收到的数据帧解封，并拆解为多条仿真机指令供后续使用，或者将多个仿真机反馈指令粘合，并自行添加以太网协议内容封装为数据帧发送给仿真机。
 \subsection{流程图}
+本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart1.pdf}
@@ -13,12 +14,17 @@
 \end{figure}
 \vspace{7pt}
 \par
-本模块的主要执行流程如图\ref{module11}所示。流程分为接收消息和发送反馈消息两部分。虚拟仿真机在接收到原始数据帧后首先取得头部中的指令部分总长度信息，跳过头部后，根据每条指令的长度信息将粘合在一起的多条指令进行拆分，交付给转换模块。
+虚拟仿真机在接收到原始数据帧后首先取得头部中的指令部分总长度信息，跳过头部后，根据每条指令的长度信息将粘合在一起的多条指令进行拆分，交付给转换模块。
 当总长度读取完毕后，数据帧的接收流程便结束。此过程中可能遇到暂时没有验证的仿真机指令，将其暂时丢弃即可。
 \par
 反馈消息流程中，该模块会收到来自指令转换模块的仿真机指令，其需要将这些指令粘合并为它们添加总长度、以太网协议头等信息构建成一个数据帧，最后将其写入发送队列结束流程。
 
 \subsection{核心类图}
+
+\vspace{7pt}
+本模块的核心类图如图\ref{module12}所示。其中的核心是类SimulationDeviceContext，它表示仿真机与虚拟仿真机的交流环境
+MacLinkCommunication类负责初始化与某一网卡设备的侦听关系，并负责数据帧的实际收取和发送。
+MacReceivingRunnable是处理信息收发的线程实例，收取到的数据帧会加入接收数据帧的队列MacReceivingQueue，线程实例从中取数据并交由指令转换模块。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/classdiagram1.pdf}
@@ -26,16 +32,14 @@
         \label{module12}
     \end{center}
 \end{figure}
-\vspace{7pt}
-本模块的核心类图如图\ref{module12}所示。其中的核心是类SimulationDeviceContext，它表示仿真机与虚拟仿真机的交流环境
-MacLinkCommunication类负责初始化与某一网卡设备的侦听关系，并负责数据帧的实际收取和发送。
-MacReceivingRunnable是处理信息收发的线程实例，收取到的数据帧会加入接收数据帧的队列MacReceivingQueue，线程实例从中取数据并交由指令转换模块。
+\par
 当需要反馈时，线程实例会调用设备实例中的发送方法，最终通过MacLink实现发送。
 ISimulatorDeviceInterface代表仿真机设备类的接口，其中包含了对于数据帧中指令代号的读取方法GetSimOperateCode，以及发送消息给仿真机SendToSimulationDevice方法。
 CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的仿真机设备，其中含有解读并转换该设备指令的具体算法。当需要接入其他公司设备时，
 只需要重新实现SimulatorDevice接口。
 
 \subsection{顺序图}
+图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了仿真机与虚拟仿真机沟通过程中各类的交互过程。
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=\textwidth]{pictures/sequence1.pdf}
@@ -44,7 +48,7 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
     \end{center}
 \end{figure}
 \vspace{7pt}
-图\ref{seq1}是仿真机侧数据交换模块的顺序图，描述了仿真机与虚拟仿真机沟通过程中各类的交互过程。
+\par
 首先交流环境类SimDeviceContext以mac地址作为参数尝试初始化MacLink，即开始侦听对应网卡设备，MacLink类中利用WinpPcap实现侦听，并判断是否侦听成功。
 成功建立连接后，便可以进行数据的收发。交流环境线程MacTaskRunnable运行后会循环执行OnMacRecevied方法，
 当有数据到达时会对其进行解封处理并加入MacQueue队列等待指令转换。
@@ -86,9 +90,6 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
 \section{指令转换模块}
 指令转换模块负责仿真机指令与自定义指令之间的转换。经过转换后的指令才能被对方理解并使用，同时屏蔽了两方的差异，满足视景系统的可扩展性。
 结合视景系统的实际需求与指令中的共性，本文设计的部分自定义指令如表\ref{selfcommand}所示，可以满足基本飞行、灯光指示、雨雪天气变换等效果。
-转换过程中首先需注意仿真机指令中对于浮点数的表达方式是由该厂商自行设计的，对于不同用途不同精度要求的数据其数字表示方式均存在差异。
-因此这两种结构之间的转换需要严格依照设计文档中的说明设计转换算法，而不是简单的赋值。
-其次对于最重要飞机位置和姿态的指令，由于仿真机给出的位置是由经纬度高度组成的数据，而图像生成器中使用的坐标系是笛卡尔坐标系，必须经过坐标系的转换才能使用该信息。
 \begin{table}[h!]
     \begin{center}
         \caption{部分自定义指令说明}
@@ -116,6 +117,11 @@ CAEGenericSimulatorDeviceBase是该接口的一个实现，其代表CAE公司的
         \end{tabularx}
     \end{center}
 \end{table}
+\par
+转换过程中首先需注意仿真机指令中对于浮点数的表达方式是由该厂商自行设计的，对于不同用途不同精度要求的数据其数字表示方式均存在差异。
+因此这两种结构之间的转换需要严格依照设计文档中的说明设计转换算法，而不是简单的赋值。
+其次对于最重要飞机位置和姿态的指令，由于仿真机给出的位置是由经纬度高度组成的数据，而图像生成器中使用的坐标系是笛卡尔坐标系，必须经过坐标系的转换才能使用该信息。
+
 \subsection{流程图}
 \par
 本模块的主要执行流程如图\ref{module21}所示。
@@ -232,16 +238,16 @@ $$N=\frac{a}{\sqrt{1-e^2sin^2(lat)}}$$
 图像生成器数据交换模块负责图像生成器与虚拟仿真机之间的交流。其利用Tbuspp插件使用TCP协议沟通，数据交换协议则是ProtoBuffer。
 此过程中为了对自定义指令添加头部信息构建通用结构，需要对两次序列化，解封过程同样需要两次反序列化。
 \subsection{流程图}
-\begin{figure}[h!]
+
+ 本模块的主要执行流程如图\ref{module31}所示。当收到来自指令转换模块的自定义指令时首先将其进行一次序列化。为了保证接收方了解怎样反序列化，还需要为序列添加指令代号，相当于生成了一个虚拟仿真机与图像生成器间交流的通用指令结构。将此结构再一次序列化后可以加入到Tbuspp发送队列中进行发送。
+ 而当从Tbuspp的接收队列中读取了反馈信息后，需要使用通用结构第一次反序列化得到指令代号，根据指令代再使用对应自定义指令结构对剩余部分反序列化。便可以将得到的自定义指令交给指令转换模块。
+ \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.8\textwidth]{pictures/flowchart3.pdf}
         \caption{图像生成器侧数据交互流程图}
         \label{module31}
     \end{center}
 \end{figure}
- 本模块的主要执行流程如图\ref{module31}所示。当收到来自指令转换模块的自定义指令时首先将其进行一次序列化。为了保证接收方了解怎样反序列化，还需要为序列添加指令代号，相当于生成了一个虚拟仿真机与图像生成器间交流的通用指令结构。将此结构再一次序列化后可以加入到Tbuspp发送队列中进行发送。
- 而当从Tbuspp的接收队列中读取了反馈信息后，需要使用通用结构第一次反序列化得到指令代号，根据指令代再使用对应自定义指令结构对剩余部分反序列化。便可以将得到的自定义指令交给指令转换模块。
-
 \subsection{核心类图}
 本模块的核心类图如图\ref{module32}所示。其中的核心是类ImageGeneratorContext，它表示图像生成器与虚拟仿真机的交流环境，其中主要的成员是代表信息收发进程的ImageGeneratorTaskRunnable。
 该类中的mAssembler成员负责在需要发送自定义指令时为其指令添加代号等头部信息，生成通用结构FFSPacket。多个FFSPacket可以粘合为一个FFSFrame一起发送。
