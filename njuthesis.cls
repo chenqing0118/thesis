@@ -611,7 +611,7 @@
     \else
       \@restonecolfalse
     \fi
-    \nchapter{\contentsname}%
+    \chapter*{\contentsname}%
     \@mkboth{\MakeUppercase\contentsname}{\MakeUppercase\contentsname}%
     \@starttoc{toc}%
     \if@restonecol\twocolumn\fi
@@ -1039,7 +1039,7 @@
 \newcommand*{\njut@license@maketable}{%
 \noindent\zihao{5}%
 \begin{tabular*}{\textwidth}
-    {|C{2.2cm}|C{2cm}|C{1.5cm}|C{2.1cm}|C{1.42cm}C{1.5cm}|C{1.25cm}|}
+    {|C{2.2cm}|C{2.2cm}|C{1.5cm}|C{2.1cm}|C{1.42cm}C{1.5cm}|C{1.05cm}|}
   \hline
   \cell{2.2cm}{1cm}{\njut@cap@license@title}
   & \multicolumn{6}{c|}{\ifdefempty{\njut@value@title}{\njut@value@titlea\njut@value@titleb}{\njut@value@title}} \\
